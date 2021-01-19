@@ -90,7 +90,7 @@ valid_value = fr"({valid_bool}|{valid_string}|{valid_float}|{valid_int}|{valid_a
 valid_value_c = fr"({valid_bool}|{valid_string}|{valid_float}|{valid_int})"
 op = fr"([\/%+\-*><]|\|\||&&|>=|<=|==|!=|\||&|\sin\s|\sas\s|\sis\s|\sand\s|\sor\s)" # Basic (binary) operators
 op_l = fr"(new\s|!|not\s)" # Right binding operators
-op_r = fr"({match_brackets}|{match_braces}|{match_curlies})" # Left binding operators
+op_r = fr"((?<!\n\s*)({match_brackets}|{match_braces}|{match_curlies}))" # Left binding operators. GD doesn't allow newline, cs does, for simplicity we won't allow them
 #fcall = fr"(?<!public .*)({valid_name}\s*{match_braces}\s*{match_curlies}*)" # Deprecated, function call is now an op_r
 full_name = fr"({valid_name}((\.{valid_name})*))" # Full name, including all dot accessors
 aterm = fr"({valid_value}|{valid_name})" # Atomic Terms without accessors (.)
@@ -100,8 +100,8 @@ sterm = fr"(?<sterm>({aterm}|\((?&sterm)\))(\.{valid_name})*)" # Simple Terms wi
 cterm = fr"(?<cterm>({aterm}|\((?&cterm)\))(\s*?{op_r}|\.{valid_name})*)" # Closed Terms without operators other than accessors of any kind
 cterm_c = fr"(?<cterm>({aterm_c}|\((?&cterm)\))(\s*?{op_r}|\.{valid_name})*)" # Closed Terms without operators other than accessors of any kind
 #valid_term = fr"(({op_l}\s*)*{sterm}(\s*{op_r})*((\s*{op}\s*({op_l}\s*)*{sterm})(\s*{op_r})*|\.[ \t]*{fcall}\s*{op_r}*)*)";
-valid_term = fr"(?<termo>(?!\s)(({op_l})*\s*?({cterm}|\(\s*(?&termo)\s*?\))\s*?(\s*{op}\s*(?&termo))*))";
-valid_term_c = fr"(?<termo>(?!\s)(({op_l})*\s*?({cterm_c}|\(\s*(?&termo)\s*?\))\s*?(\s*{op}\s*(?&termo))*))";
+valid_term = fr"(?<termo>(?!\s)(({op_l})*\s*?({cterm}|\(\s*(?&termo)\s*?\))\s*?((\s*{op}\s*|\.)(?&termo))*))";
+valid_term_c = fr"(?<termo>(?!\s)(({op_l})*\s*?({cterm_c}|\(\s*(?&termo)\s*?\))\s*?((\s*{op}\s*|\.)(?&termo))*))";
 # valid_term = fr"(?!\s)(?<termo>({op_l})*\s*?({cterm}|\(\s*(?&termo)\s*?\))\s*?(\s*{op}\s*(?&termo))*)(?={separator})";
 match_comments_old = fr"[ \t]*#.*$"
 match_comments_new = fr"[ \t]*\/\/.*$"
@@ -422,15 +422,17 @@ with open(filename,'r+') as f:
 		print("SUCCESS -- " + outname)
 
 # 	test_text = """
-# export(Date,Param)const Date = preload("res://Scripts/Resources/Date.cs");
-# export(Date,Param) const DEVMODE = true
-# export ( Date , Param ) const TIMESTEP = 0.1 # Smallest undo step (determines (inversely) how smooth timetravel looks, but also how fast savegame size grows)
+# a.(121+2).GetType(i)
+# (121).GetType(i)
+# 121.GetType(i)
+# a.GetType(i)
+# a
 
 
 # 		"""
 
 # 	print('==========================RESULT=============================')
-# 	pattern = strip_duplicate_groups(fr"((?<={separator})export\s*\(\s*(?P<T>)\s*,\s*(?P<A>.*)\s*\)\s*(?P<B>(const\s+){{0,1}}var)(?=\s+{valid_name}\s*=))"); # TODO : Why not match this particular example?
+# 	pattern = strip_duplicate_groups(fr"{valid_term}");
 # 	print("\n".join(list(map(lambda v : "["+v[0].replace("\n","\\n")+"]",regex.findall(pattern,test_text,flags)))))
 
 	
