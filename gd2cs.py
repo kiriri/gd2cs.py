@@ -49,7 +49,7 @@ outname = "GameDataTest.cs"
 i = 0
 while i < len(sys.argv):
 	arg = sys.argv[i]
-	if arg == "-f":
+	if arg == "-f" or arg == "-i":
 		filename = sys.argv[i+1]
 		i+=2
 	elif arg == "-o":
