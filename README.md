@@ -182,6 +182,7 @@ public class GameDataTest2 : Node
 }
 ```
 
+As you can see, it's not perfect and it will require you to manually fix the formatting and some underivable type definitions afterwards. But it should save you hundreds of hours on your code conversions. If it does save you time, please consider leaving a donation. It'll flow right back into making this project even better.
 
 <br>
 TODO:<br>
