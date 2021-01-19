@@ -12,6 +12,7 @@ import click
 import os
 import math
 import sys
+import subprocess
 
 
 # regex module required, install if not already.
@@ -19,10 +20,7 @@ try:
   import regex
 except ImportError:
 	if click.confirm('This Script requires the regex package. Install?', default=True):
-		if (sys.version_info > (3, 0)):
-			os.system('python3 -m pip install regex')
-		else:
-			os.system('python -m pip install regex')
+		subprocess.check_call([sys.executable,"-m","pip","install","regex"])
 	else:
 		quit()
 try:
