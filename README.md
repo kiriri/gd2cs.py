@@ -36,42 +36,32 @@ const _default_data = {
 	"t" : 100,
 	"r" : 'asfgh',
 	"u" : false,# Example Comment
-	"r":[],
-	"t":{},
-	"r":
-	{"e":
-		{
-			"e":{"g":1,"f":2},
-			"g":
-			{
-				"a":{"b":{}},
-				"c d":{"e":{}},
-			},
-		},
-	},
+	"r":["a",{"b":false}],
+	"t":{"e":{"g":1,"f":2},},
 };
 
 
 func ready():
-	var s = Helper.deep_copy(_default_data) 
+	var s = range(abs(-1),randi())
 	
-    if ABC:
-        f()
-        s=t
-        f()
-        
-	return [
-	[0,e,[0,{}]], # a
-	[1,{},[0,{}]],
+    if ABC: # Comment
+        assert(false)
+    elif false:
+        print("Hello"+" "+"World")
+    else:
+        (a+b)()
+    return [
+    [0,e,[0,{}]], # a
+    [1,{},[0,{}]],
     ];
 
 # Do stuff
 func r(value:T,val=false,s)->bool:
-	if value == null : return null
+	if value == null : return !true
 	
 	var type = typeof(value)
 	match type :
-		TYPE_BOOL,TYPE_INT,TYPE_NIL,TYPE_REAL,TYPE_RID,TYPE_STRING:
+		TYPE_BOOL,TYPE_INT,TYPE_NIL:
 			return value
 		TYPE_DICTIONARY:
 			var result = {}
@@ -114,39 +104,31 @@ public class GameDataTest2 : Node
 		{"t", 100},
 		{"r", "asfgh"},
 		{"u", false},// Example Comment
-		{"r",new Array(){}},
-		{"t",new Dictionary(){}},
-		{"r",
-		new Dictionary(){{"e",
-			new Dictionary(){
-				{"e",new Dictionary(){{"g",1},{"f",2}}},
-				{"g",
-				new Dictionary(){
-					{"a",new Dictionary(){{"b",new Dictionary(){}}}},
-					{"c d",new Dictionary(){{"e",new Dictionary(){}}}},
-				}},
-			}},
-		}},
+		{"r",new Array(){"a",new Dictionary(){{"b",false}}}},
+		{"t",new Dictionary(){{"e",new Dictionary(){{"g",1},{"f",2}}},}},
 	};
 	
 	
 	public  ready()
 	{  
-		var s = Helper.deep_copy(_default_data) ;
+		var s = GD.Range(Mathf.Abs(-1),GD.Randi());
 		
-	    if(ABC)
+	    if(ABC) // Comment
 	    {
-	
-	        f();
-	        s=t;
-	        f();
-	        
-	
+	        System.Diagnostics.Debug.Assert(false);
 	    }
-		return [
-		new Array(){0,e,new Array(){0,new Dictionary(){}}}, // a
-		[1,new Dictionary(){},new Array(){0,new Dictionary(){}}],
-	    ];
+	    else if(false)
+	    {
+	        GD.Print("Hello"+" "+"World");
+	    }
+	    else
+	    {
+	        (a+b)()
+	    }
+	    return new Array(){
+	    new Array(){0,e,new Array(){0,new Dictionary(){}}}, // a
+	    new Array(){1,new Dictionary(){},new Array(){0,new Dictionary(){}}},
+	    };
 	
 	// Do stuff
 	}
@@ -154,20 +136,14 @@ public class GameDataTest2 : Node
 	public bool r(T value,bool val=false,s)
 	{  
 		if(value == null)
-		{ return null
-	
+			 return !true;
 		
-	
-		}
 		var type = (value).GetType();
 		switch( type )
 		{
 			case TYPE_BOOL:
 			case TYPE_INT:
 			case TYPE_NIL:
-			case TYPE_REAL:
-			case TYPE_RID:
-			case TYPE_STRING:
 				return value;
 				break;
 			case TYPE_DICTIONARY:
