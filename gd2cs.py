@@ -121,9 +121,9 @@ replacements = [
 	[fr"^(\s*)tool\s*$"," "], 
 	[fr"^(\s*)extends\s*.*\s*$"," "],
 	# Turn lowest level unprocessed dictionaries. KV pairs are still of form K:V though
-	[fr"(?<!(new Dictionary\(\)|[\w\W]{{5}}new Array\(\)))(?<=([:,={{[(]|return\s+))(?P<W>{match_eol}*\s*)(?P<C>{match_curlies})",r"\g<W>new Dictionary()\g<C>"], 
+	[fr"(?<!(new Dictionary\(\)|new Array\(\)))(?<=([:,={{[(]|return\s+))(?P<W>{match_eol}*\s*)(?P<C>{match_curlies})",r"\g<W>new Dictionary()\g<C>"], 
 	# Same for array
-	[fr"(?<!(new Dictionary\(\)|new Array\(\)))(?<=(([:,={{[(]|return\s*)(\s*)))\[(([^\[]|(?R))*?)\]",r"new Array(){\5}"], 
+	[fr"(?<!(new Dictionary\(\)|new Array\(\)))(?<=([:,={{[(]|return\s+))(?P<W>{match_eol}*\s*)(\[(?P<C>([^\[]|(?R))*?)\])",r"\g<W>new Array(){\g<C>}"],
 	# Chars don't exist in gdscript, so let's assume all of those '-strings are normal "-strings.
 	["\'","\""], 
 	# Single line comments start with # ( TODO This may mess up strings though!)
@@ -160,11 +160,11 @@ replacements = [
 	## If/Else
 
 	# replace if/elif blocks 
-	[fr"^(?P<A>[ \t]*)(?P<B>if|elif)(?=[\t \(])[\t ]*(?P<C>({valid_term}){{1,1}})[ \t]*:(?P<D>[^\n]*?)(?P<Comment>{match_eol})(?P<E>\n({comment_or_empty}*(\1[\t ]+.*\n)*))",r"\g<A>\g<B>(\g<C>)\g<Comment>\n\g<A>{\g<D>\n\g<E>\n\g<A>}\n"], 
+	[fr"^(?P<A>[ \t]*)(?P<B>if|elif)(?=[\t \(])[\t ]*(?P<C>({valid_term}){{1,1}})[ \t]*:(?P<D>[^\n]*?)(?P<Comment>{match_eol})(?P<E>\n({comment_or_empty}*(\1[\t ]+.*\n)*))",r"\g<A>\g<B>(\g<C>)\g<Comment>\n\g<A>{\g<D>\n\g<E>\g<A>}\n"], 
 	# elif
 	[fr"(?<={separator})elif(?={separator})","else if"],
 	 # replace else
-	[fr"^(?P<A>[ \t]*)(?P<B>else)[\t ]*:(?P<D>[^\n]*)\n(?P<E>((\1[\t ]+.*(\n|$)|{comment_or_empty})*))",r"\g<A>\g<B>\g<D>\n\g<A>{\n\g<E>\n\g<A>}\n"],
+	[fr"^(?P<A>[ \t]*)(?P<B>else)[\t ]*:(?P<D>[^\n]*)\n(?P<E>((\1[\t ]+.*(\n|$)|{comment_or_empty})*))",r"\g<A>\g<B>\g<D>\n\g<A>{\n\g<E>\g<A>}\n"],
 	# Inline if else
 	[fr"((?=[^\n]*[\t ]+if[ \t]+[^\n]+[ \t]+else[ \t]+[^\n]+)(?P<A>{valid_term})[ \t]+if[ \t]+(?P<B>{valid_term})[ \t]+else[ \t]+(?P<C>{valid_term}))",fr"\g<B> ? \g<A> : \g<C>"],
 
