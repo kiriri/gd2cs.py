@@ -12,7 +12,7 @@ Known issues :<br>
 \- Nested Dictionaries generate excessive/invalid semicolons<br>
 <br>
 Usage : <br>specify the input gd file via -f "\*" and the target output file via -o "\*" . <br>
-Use -t * to specify the number of spaces in a tab (default = 4). This will replace consecutive spaces with tabs so the regex patterns can match a mix of space-offsets and tab-offsets (eg "else:\n    pass" will become "else:\n\tpass").<br>
+Use -t * to specify the number of spaces in a tab (default = 4). This will replace consecutive spaces with tabs so the regex patterns can match a mix of space-offsets and tab-offsets (eg "else:\n&nbsp;&nbsp;&nbsp;&nbsp;pass" will become "else:\n\tpass").<br>
 <br>
 Example :<br>
 python3 gd2cs.py/gd2cs.py -i "Test_Script_Godot.gd" -o "Output/TestScript.cs"<br>
