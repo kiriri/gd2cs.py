@@ -10,9 +10,9 @@ It analyzes syntax only. No fancy code analysis.
 Known issues :<br>
 \- Keywords in strings or comments may be replaced<br>
 \- Nested Dictionaries generate excessive/invalid semicolons<br>
-\- Tabs and Spaces are counted separately : a godot if statement that's indented 1 tab will not match following lines indented 4+n spaces.<br>
 <br>
 Usage : <br>specify the input gd file via -f "\*" and the target output file via -o "\*" . <br>
+Use -t * to specify the number of spaces in a tab (default = 4). This will replace scope offsets with spaces into tabs so the regex patterns can match a mix of space-offsets and tab-offsets.<br>
 <br>
 Example :<br>
 python3 gd2cs.py/gd2cs.py -i "Test_Script_Godot.gd" -o "Output/TestScript.cs"<br>

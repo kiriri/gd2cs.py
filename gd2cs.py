@@ -41,8 +41,9 @@ except ImportError:
 # TODO : Process entire folders at once, recursively -r flag
 
 # Name of the file to be converted :
-filename = "GameData.gd"#"gd2cs_test"#
+filename = "GameData.gd"
 outname = "GameDataTest.cs"
+strip_tabs = 4 # Replace 4 subsequent spaces at the beginning of a line with a tab so offset patterns can match them. Applied before all other patterns.
 
 i = 0
 while i < len(sys.argv):
@@ -52,7 +53,10 @@ while i < len(sys.argv):
 		i+=2
 	elif arg == "-o":
 		outname = sys.argv[i+1]
-		i+=2 
+		i+=2
+	elif arg == "-t":
+		strip_tabs = sys.argv[i+1]
+		i+=2
 	else:
 		i+=1
 
@@ -62,7 +66,6 @@ if not filename.endswith(".gd"):
 
 if not outname.endswith(".cs"):
 	outname = filename + ".cs"
-
 
 
 
@@ -117,6 +120,7 @@ using Array = Godot.Collections.Array;
 """;
 
 replacements = [
+	[fr"(?<=^\t*)" + fr" "*strip_tabs,fr"\t"],
 	# Clean up directives that are manually applied after regex replacements
 	[fr"^(\s*)tool\s*$"," "], 
 	[fr"^(\s*)extends\s*.*\s*$"," "],
