@@ -10,6 +10,7 @@ It analyzes syntax only. No fancy code analysis.
 Known issues :<br>
 \- Keywords in strings or comments may be replaced<br>
 \- Nested Dictionaries generate excessive/invalid semicolons<br>
+\- Tabs and Spaces are counted separately : a godot if statement that's indented 1 tab will not match following lines indented 4+n spaces.<br>
 <br>
 Usage : <br>specify the input gd file via -f "\*" and the target output file via -o "\*" . <br>
 <br>
