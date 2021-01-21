@@ -32,10 +32,11 @@ except ImportError:
 # Keywords in strings or comments may be replaced
 # Nested Dictionaries generate excessive/invalid semicolons
 
-
+# TODO : setget
 # TODO : yield => await ToSignal(sender, "signal");
 # TODO : Mark functions async if they contain yield (not in comments!)
 # TODO : Mark functions as void if they don't contain a return (with a valid_term)
+# TODO : global variables such as PI
 # TODO : If extend Node, convert all Node function to capitalized forms
 # TODO : Fix Comments in strings (don't convert!) (Use ?: to drop them?)
 # TODO : Process entire folders at once, recursively -r flag
@@ -136,8 +137,7 @@ replacements = [
 	[fr"(?<={separator})Variant(?={separator})",fr"System.Object"],
 	# For loops
 	[fr"(?<=\n)([\t ]*)for[ ]+(.*)(->(.*))*:(.*)\n(((\1[\t ]+.*\n)|{comment_or_empty})*)",r"\1foreach(var \2)\5\n\1{\n\6\1}\n"], 
-	# Variable definitions, if they have a valid type
-	[fr"var[\t ]+(?P<Name>{valid_name})[\t ]*:[\t ]*(?P<Type>{valid_name})(?= *[=\n])",r"\g<Type> \g<Name>"], 
+	
 
 	## Functions
 
@@ -160,22 +160,27 @@ replacements = [
 	# autocomplete function arguments via default values (new T)
 	[[fr"(?<=^\s*public[\t ]+({valid_name}[\t ]+){{0,1}}{valid_name}[\t ]*){match_braces}",
 	fr"(?<=[,(]\s*?)(?P<A>{valid_name}\s*=\s*new\s+(?P<Name>{full_name}))"],fr"\g<Name> \g<A>"],
+	# TODO : find async functions (ones that contain yield) and mark them async
+	#[[fr"(?<=^\s*public[\t ]+({valid_name}[\t ]+){{0,1}}{valid_name}[\t ]*){match_braces}",
+	#fr"(?<=[,(]\s*?)(?P<A>{valid_name}\s*=\s*new\s+(?P<Name>{full_name}))"],fr"\g<Name> \g<A>"],
 
 	## If/Else
 	
 	# replace if/elif blocks 
 	[fr"^(?P<A>[ \t]*)(?P<B>if|elif)(?=[\t \(])[\t ]*(?P<C>({valid_term}){{1,1}})[ \t]*:(?P<Comment>{match_eol})(?P<E>\n({comment_or_empty}*(\1[\t ]+.*\n)*))",r"\g<A>\g<B>(\g<C>)\g<Comment>\n\g<A>{\g<E>\g<A>}\n"], 
-	# Single line if/else : * (This must not capture subsequent indendented lines)
+	# single line if/else : * (This must not capture subsequent indendented lines)
 	[fr"^(?P<A>[ \t]*)(?P<B>if|elif)(?=[\t \(])[\t ]*(?P<C>({valid_term}){{1,1}})[ \t]*:(?P<D>[^\n]*?)(?P<Comment>{match_eol})",r"\g<A>\g<B>(\g<C>)\g<Comment>\n\g<A>\t\g<D>"], 
 	# elif
 	[fr"(?<={separator})elif(?={separator})","else if"],
-	 # replace else
+	# replace else
 	[fr"^(?P<A>[ \t]*)(?P<B>else)[\t ]*:(?P<D>[^\n]*)\n(?P<E>((\1[\t ]+.*(\n|$)|{comment_or_empty})*))",r"\g<A>\g<B>\g<D>\n\g<A>{\n\g<E>\g<A>}\n"],
-	# Inline if else
+	# inline if else
 	[fr"((?=[^\n]*[\t ]+if[ \t]+[^\n]+[ \t]+else[ \t]+[^\n]+)(?P<A>{valid_term})[ \t]+if[ \t]+(?P<B>{valid_term})[ \t]+else[ \t]+(?P<C>{valid_term}))",fr"\g<B> ? \g<A> : \g<C>"],
 
 	## Variable Declarations
 
+	# Variable definitions, if they have a valid type
+	[fr"var[\t ]+(?P<Name>{valid_name})[\t ]*:[\t ]*(?P<Type>{valid_name})",r"\g<Type> \g<Name>"], 
 	# Signals
 	[fr"(?<={separator})signal(?P<R>\s+{valid_name}\s*{match_braces})[\t ]*\;*(?={match_eol})",fr"[Signal] delegate void\g<R>;"],
 	# Unidentifiable variables const var
@@ -194,7 +199,10 @@ replacements = [
 	[fr"(?<=\s|^)var\s+(?P<A>{valid_name})(?=\s*=\s*new\s+(?P<B>{full_name})(.*))",fr"\g<B> \g<A>"], 
 	# const => static readonly unless value is struct
 	[fr"const[\t ]+(?!{builtin_type}[\t ])(?={valid_name}[\t ]+{valid_name}[\t ]+=)",fr"static readonly "],
-	
+	# setget
+	[fr"(?<=\s)setget[ \t]+(?P<S>{valid_name})((,)[ \t]*(?P<G>{valid_name}))",r"{get{return \g<G>();} set{\g<S>(value);}}"],
+	[fr"(?<=\s)setget[ \t]+(?P<S>{valid_name})",r"{set{\g<S>(value);}}"],
+	[fr"(?<=\s)setget[ \t]+((,)[ \t]*(?P<G>{valid_name}))",r"{get{return \g<G>();}}"],
 	## Operators
 
 	# not => !
