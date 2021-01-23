@@ -32,7 +32,7 @@ except ImportError:
 # Keywords in strings or comments may be replaced
 # Nested Dictionaries generate excessive/invalid semicolons
 
-# TODO : setget
+# parent calls .X => parent.X
 # TODO : yield => await ToSignal(sender, "signal");
 # TODO : Mark functions async if they contain yield (not in comments!)
 # TODO : Mark functions as void if they don't contain a return (with a valid_term)
@@ -75,6 +75,9 @@ match_irrelevant = "((^\s*\n)|(\/\/.*\n))" # Irrelevant c#
 any_char = "[\w\W]"
 separator = fr"([{{}}\[\]\s,:;=()])"
 comment_or_empty = "((^\s*\n)|(^\s*\/\/.*\n))"
+rpc = fr"(remote|master|puppet|remotesync|mastersync|puppetsync)";
+accessors = fr"(public|private|protected)"
+func_prefix = fr"({rpc}|{accessors}|virtual|override|static|)" # Most of these are c#
 reserved_keywords = fr"(public|static|var|const|foreach|for|if|else|switch|case|return|using)"
 valid_name = fr"([_a-zA-Z]+[_\-a-zA-Z0-9]*(?<!{reserved_keywords}))" 
 match_curlies = fr"(?<curlies>{{((?>[^{{}}]+)|(?&curlies))*}})" # Named group recursion on curled braces
@@ -83,9 +86,9 @@ match_brackets = fr"(?<brackets>\[((?>[^\[\]]+)|(?&brackets))*\])"
 builtin_constructors = fr"(String|Vector2|Rect2|Vector3|Color|Transform2D|Plane|Quat|AABB|Basis|Transform|NodePath|RID|Object|Array|Dictionary)"# gd builtins types. Ignore types that don't have matching constructor in c#, like float
 builtin_type = fr"(bool|uint|int|float|double|string|object|sbyte|byte|long|ulong|short|ushort|decimal|char|DateTime)" # C# builtins
 valid_bool = fr"(true|false|True|False)"
-valid_int = fr"(-{{0,1}}[0-9]+)"
+valid_int = fr"(-?[0-9]+)"
 valid_string = fr"(\".*?(?<!\\)\")"
-valid_float = fr"(-{{0,1}}([0-9]*\.[0-9]+|[0-9]+\.[0-9]*)f{{0,1}})"
+valid_float = fr"(-?([0-9]*\.[0-9]+|[0-9]+\.[0-9]*)f?)"
 valid_array = fr"({match_brackets})" # GD Definition
 valid_dictionary = fr"{match_curlies}" # GD Definition
 valid_value = fr"({valid_bool}|{valid_string}|{valid_float}|{valid_int}|{valid_array}|{valid_dictionary})"
@@ -146,23 +149,22 @@ replacements = [
 	# replace function declarations, if possible use return type, otherwise leave blank
 	[fr"(?P<A>[\t ]*)func[\t ]+(?P<Name>{valid_name})[\t ]*(?P<Params>{match_braces})([\t ]*->[\t ]*(?P<R_Type>.*))*[ \t]*:(?P<Comments>.*)\n(?P<Content>((\1[\t ]+.*\n)|{comment_or_empty})*)",r"\1public \g<R_Type> \g<Name>\g<Params>\n\1{\1  \g<Comments>\n\g<Content>\1}\n\n"], 
 	# autocomplete function arguments via default values (bool). First limit selection to function signature, then run replacement over that section only.
-	[[fr"(?<=^\s*public[\t ]+({valid_name}[\t ]+){{0,1}}{valid_name}[\t ]*){match_braces}",
+	[[fr"(?<=^\s*public[\t ]+({valid_name}[\t ]+)?{valid_name}[\t ]*){match_braces}",
 	fr"(?<=[,(]\s*?)(?P<A>{valid_name}\s*=\s*{valid_bool})"],fr"bool \g<A>"],
 	# autocomplete function arguments via default values (int)
-	[[fr"(?<=^\s*public[\t ]+({valid_name}[\t ]+){{0,1}}{valid_name}[\t ]*){match_braces}",
+	[[fr"(?<=^\s*public[\t ]+({valid_name}[\t ]+)?{valid_name}[\t ]*){match_braces}",
 	fr"(?<=[,(]\s*?)(?P<A>{valid_name}\s*=\s*{valid_int})"],fr"int \g<A>"],
 	# autocomplete function arguments via default values (string)
-	[[fr"(?<=^\s*public[\t ]+({valid_name}[\t ]+){{0,1}}{valid_name}[\t ]*){match_braces}",
+	[[fr"(?<=^\s*public[\t ]+({valid_name}[\t ]+)?{valid_name}[\t ]*){match_braces}",
 	fr"(?<=[,(]\s*?)(?P<A>{valid_name}\s*=\s*{valid_string})"],fr"string \g<A>"],
 	# autocomplete function arguments via default values (float)
-	[[fr"(?<=^\s*public[\t ]+({valid_name}[\t ]+){{0,1}}{valid_name}[\t ]*){match_braces}",
+	[[fr"(?<=^\s*public[\t ]+({valid_name}[\t ]+)?{valid_name}[\t ]*){match_braces}",
 	fr"(?<=[,(]\s*?)(?P<A>{valid_name}\s*=\s*{valid_float})"],fr"float \g<A>"],
 	# autocomplete function arguments via default values (new T)
-	[[fr"(?<=^\s*public[\t ]+({valid_name}[\t ]+){{0,1}}{valid_name}[\t ]*){match_braces}",
+	[[fr"(?<=^\s*public[\t ]+({valid_name}[\t ]+)?{valid_name}[\t ]*){match_braces}",
 	fr"(?<=[,(]\s*?)(?P<A>{valid_name}\s*=\s*new\s+(?P<Name>{full_name}))"],fr"\g<Name> \g<A>"],
 	# TODO : find async functions (ones that contain yield) and mark them async
-	#[[fr"(?<=^\s*public[\t ]+({valid_name}[\t ]+){{0,1}}{valid_name}[\t ]*){match_braces}",
-	#fr"(?<=[,(]\s*?)(?P<A>{valid_name}\s*=\s*new\s+(?P<Name>{full_name}))"],fr"\g<Name> \g<A>"],
+	#[fr"(^\s*public[\t ]+({func_prefix}[\t ]+)?({valid_name}[\t ]+)?{valid_name}[\t ]*){match_braces}{match_eol}\s*({match_curlies}&&((\s|.)*yield(\s|.)*))",fr"e"],
 
 	## If/Else
 	
@@ -186,7 +188,7 @@ replacements = [
 	# Unidentifiable variables const var
 	[fr"(?<={separator}const\s+)(?={valid_name}\s*=)",r"var "], 
 	# Auto identify variables from export hints
-	[fr"(?<={separator})export\s*\(\s*(?P<T>{valid_term})\s*(,\s*(?P<A>.*?){{0,1}})\s*\)\s*(?P<B>(const\s+){{0,1}})var(?=\s+{valid_name}\s*=)",fr"[Export(\g<A>)] \g<B> \g<T>"],
+	[fr"(?<={separator})export\s*\(\s*(?P<T>{valid_term})\s*(,\s*(?P<A>.*?)?)\s*\)\s*(?P<B>(const\s+)?)var(?=\s+{valid_name}\s*=)",fr"[Export(\g<A>)] \g<B> \g<T>"],
 	# Auto identify bools. TODO : Also accept simple static terms such as 5*5, !true, "a" in ["a","b","c"]
 	[fr"(?<={separator})var(?=\s+{valid_name}\s*=\s*{valid_bool}(.*))",r"bool"],
 	# Auto identify float
@@ -203,13 +205,14 @@ replacements = [
 	[fr"(?<=\s)setget[ \t]+(?P<S>{valid_name})((,)[ \t]*(?P<G>{valid_name}))",r"{get{return \g<G>();} set{\g<S>(value);}}"],
 	[fr"(?<=\s)setget[ \t]+(?P<S>{valid_name})",r"{set{\g<S>(value);}}"],
 	[fr"(?<=\s)setget[ \t]+((,)[ \t]*(?P<G>{valid_name}))",r"{get{return \g<G>();}}"],
+
 	## Operators
 
 	# not => !
 	[fr"(?<={separator})not(?=[\s(])\s*","!"], 
 	# Direct casts
 	[fr"(?<={separator})(\s*){builtin_type}\s*\(",fr"\2(\3)("], 
-	 # Builtin constructors, like "Vector2()" => "new Vector2()"
+	# Builtin constructors, like "Vector2()" => "new Vector2()"
 	[fr"(?<={separator})(?<!new\s+)(?P<A>\s*)(?P<B>{builtin_constructors})\s*\(",fr"\g<A>new \g<B>("],
 	# typeof(v) => v.GetType()
 	[fr"(?<={separator}\s*)typeof\s*{match_braces}",r"\2.GetType()"], 
@@ -219,6 +222,7 @@ replacements = [
 	# [fr"{cterm}\s+in\s+{cterm}",fr""] # Ignore "in" operator for now due to complicated operator binding situation.
 	# Turn all remaining A : B into automatic array pairs {A,B} , presumably part of dictionary initiation.
 	[fr"(?<! \/\/.*)(\"(([^\"]|\\\")*?)((?<!\\)\"))(\s*)(:)(((?<curlies>{{((?>[^{{}}]+)|(?&curlies))*}})|([^{{]))*?)(?=}}|,)",r"{\1,\7}"],
+
 
 	## SWITCH/CASE
 
@@ -234,9 +238,11 @@ replacements = [
 	# semicolon at end of standalone terms (such as function calls)
 	[fr"(?<![,]\s*)(?<=^[ \t]*)(?!{reserved_keywords}\s*\(*)(?P<Content>{valid_term_c}[ \t]*)(?P<Comment>{match_eol})(?!\s*[{{[(])",fr"\g<Content>;\g<Comment>"], 
 	# semicolon at end of assignments
-	[fr"((?<=^[ \t]*|((var|const|public|private|static|async|delegate|{match_brackets})[ \t])*)({valid_name} ){{0,1}}{valid_term}[\t ]*[\+\-]{{0,1}}=[\t ]*{valid_term}[ \t]*)(?P<E>{match_eol})(?!\s*[{{(])",fr"\1;\g<E>"], 
+	[fr"((?<=^[ \t]*|((var|const|public|private|static|async|delegate|{match_brackets})[ \t])*)({valid_name} )?{valid_term}[\t ]*[\+\-]?=[\t ]*{valid_term}[ \t]*)(?P<E>{match_eol})(?!\s*[{{(])",fr"\1;\g<E>"], 
 	# return statements TODO : May be surrounded by braces or curlies, which will not count as ^ or $ 
-	[fr"^(?P<A>[ \t]*return([\t ]*{valid_term}){{0,1}})(?P<B>{match_eol})",fr"\g<A>;\g<B>"], 
+	[fr"^(?P<A>[ \t]*return([\t ]*{valid_term})?)(?P<B>{match_eol})",fr"\g<A>;\g<B>"], 
+
+	## Cleanup
 
 	[fr"^[\t ]*pass[\t ]*;*[\t ]*\n",""], # Strip "pass", which is replaced already by (maybe empty) curlies.
 
@@ -244,6 +250,7 @@ replacements = [
 
 
 function_replacements = [
+	["yield","await ToSignal"],
 	["Color8","Color.Color8"],
 	["type_exists","GD.TypeExists"],
 	["var2str","GD.Var2Str"],
@@ -337,6 +344,10 @@ function_replacements = [
 	#["yield","Mathf.Abs"],
 	["emit_signal","EmitSignal"],
 	["connect","Connect"],
+];
+
+variable_replacements = [
+	["PI","Mathf.Pi"] # TODO : Implement all global consts, ignore Node scope for now, use flag for that later
 ]
 
 
@@ -416,16 +427,24 @@ with open(filename,'r+') as f:
 				text = replace_matches(pair[0],pair[1],text)
 			if text == prev_text: # Repeatedly apply same operation until no more changes occur.
 					break;
-			if len(text) > len(orig_text) * 2:
-				print("SIZE DOUBLED, PRESUMED INFINITE BLOAT.")
+			if len(text) > len(orig_text) * 10:
+				print(pair)
+				print("SIZE GREW 10x, PRESUMED INFINITE BLOAT, ABORTING!")
+				quit();
 				break;
 
 
 	for pair in function_replacements:
-		pair[0] = fr"(?<={separator})" + pair[0] + fr"(?=\()";
+		pair[0] = fr"(?<={separator})(?<![.])" + pair[0] + fr"(?=\()";
 		text = regex.sub(pair[0], pair[1], text,0,flags)
 	
-	text = regex.sub("^","\t",text,0,flags);
+	for pair in variable_replacements:
+		pair[0] = fr"(?<={separator})(?<![.])" + pair[0] + fr"(?={separator})(?!\()";
+		text = regex.sub(pair[0], pair[1], text,0,flags)
+	
+	
+	
+	text = regex.sub("^","\t",text,0,flags); # Offset all the code by 1 tab, ready to be surrounded by class{...}
 
 	class_name = regex.match(r'.*(?=\.cs)',outname)[0];
 	text = f"{header}\n{'[Tool]' if tool else ''}\npublic class {class_name} : {extending}\n{{\n" + text + "\n}";
