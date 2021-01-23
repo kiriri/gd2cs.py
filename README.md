@@ -168,5 +168,4 @@ As you can see, it's not perfect and it will require you to manually fix the for
 <br>
 TODO:<br>
 - ignore Comments and Strings<br>
-- async functions (yield)<br>
 - process entire folders (recursively)<br>
