@@ -33,7 +33,7 @@ except ImportError:
 # Nested Dictionaries generate excessive/invalid semicolons
 
 # parent calls .X => parent.X
-# TODO : Restructure replacements into scopes
+# TODO : Rename {Builtin_Class}.aa_bb_cc to AaBbCc (Eg Engine.is_editor_hint)
 # TODO : unnamed enums
 # TODO : Mark variables public (unless name starts with _)
 # TODO : Optionally rename fields
@@ -140,6 +140,9 @@ def run(code,variables = {}):
 	results = variables
 	exec(regex.sub(fr"([\t ]*)return ({valid_name}|{valid_value})",fr"\1__result = \2\n\1return \2",code,0,flags),globals(),results)
 	return results["__result"];
+
+def to_pascal(text):
+	return text[0].upper() + text[1:].lower()
 
 # Define the replacements. 
 # This can either be an array with 2 values, the first of which will match the target text locations, and the second of which will define how the matched text will be transformed/replaced.
@@ -308,7 +311,28 @@ replacements = [
 
 	## Cleanup
 
-	[fr"^[\t ]*pass[\t ]*;*[\t ]*\n",""], # Strip "pass", which is replaced already by (maybe empty) curlies.
+	# Strip "pass", which is replaced already by (maybe empty) curlies.
+	[fr"^[\t ]*pass[\t ]*;*[\t ]*\n",""], 
+	
+	# Replace constants (multiples that follow clear patterns)
+	{
+		"match":fr"(?<={separator})PROPERTY_USAGE_([A-Z]*_?)*", # PROPERTY_USAGE_*
+		"children":[
+			{
+				"match":fr"(?<=PROPERTY_USAGE_).*", # First turn to PascalCase
+				"replacement_f":lambda t: regex.subf(fr"[A-Z]+",lambda s: to_pascal(s.group(0)),t,0,flags),
+			},
+			{ # Then strip spaces
+				"replacement":["_",""],
+			}
+		],
+		"replacement":[
+			fr"PROPERTYUSAGE(?P<Name>.*)",
+			fr"Godot.PropertyUsageFlags.\g<Name>"
+		]
+	}
+		
+	
 
 ];
 
@@ -410,12 +434,24 @@ function_replacements = [
 	["connect","Connect"],
 ];
 
-variable_replacements = [
+variable_replacements = [ # Anything that uses case conversions happens in the actual replacements array
 	["PI","Mathf.Pi"],
 	["TAU","Mathf.Tau"],
 	["INF","Mathf.Inf"],
 	["NAN","Mathf.NaN"],
 	["self","this"],
+	["TYPE_ARRAY","typeof(Array)"],
+	["TYPE_BOOL","typeof(bool)"],
+	["TYPE_COLOR","typeof(Color)"],
+	["TYPE_DICTIONARY","typeof(Dictionary)"],
+	["TYPE_INT","typeof(int)"],
+	["TYPE_NIL","null"],
+	["TYPE_OBJECT","typeof(Godot.Object)"],
+	["TYPE_REAL","typeof(float)"], # TODO : Is this float or double?
+	["TYPE_RECT2","typeof(Rect2)"],
+	["TYPE_RID","typeof(RID)"],
+	["TYPE_STRING","typeof(string)"],
+	["TYPE_VECTOR2","typeof(Vector2)"],
 ]
 
 
