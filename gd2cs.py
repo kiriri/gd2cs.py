@@ -33,7 +33,10 @@ except ImportError:
 # Nested Dictionaries generate excessive/invalid semicolons
 
 # parent calls .X => parent.X
-# TODO : yield => await ToSignal(sender, "signal");
+# TODO : Restructure replacements into scopes
+# TODO : unnamed enums
+# TODO : Mark variables public (unless name starts with _)
+# TODO : Optionally rename fields
 # TODO : Mark functions async if they contain yield (not in comments!)
 # TODO : Mark functions as void if they don't contain a return (with a valid_term)
 # TODO : global variables such as PI
@@ -46,6 +49,8 @@ filename = "GameData.gd"
 outname = "GameDataTest.cs"
 strip_tabs = 4 # Replace 4 subsequent spaces at the beginning of a line with a tab so offset patterns can match them. Applied before all other patterns.
 
+
+# Read console arguments : 
 i = 0
 while i < len(sys.argv):
 	arg = sys.argv[i]
@@ -69,6 +74,7 @@ if not outname.endswith(".cs"):
 	outname = filename + ".cs"
 
 
+# Define various regex "Words" (Lexical definitions we'll use in the more complex expressions lateron)
 
 match_irrelevant = "((^\s*\n)|(\/\/.*\n))" # Irrelevant c#
 
@@ -76,8 +82,8 @@ any_char = "[\w\W]"
 separator = fr"([{{}}\[\]\s,:;=()])"
 comment_or_empty = "((^\s*\n)|(^\s*\/\/.*\n))"
 rpc = fr"(remote|master|puppet|remotesync|mastersync|puppetsync)";
-accessors = fr"(public|private|protected)"
-func_prefix = fr"({rpc}|{accessors}|virtual|override|static|)" # Most of these are c#
+access_modifiers = fr"(public|private|protected)"
+func_prefix = fr"({rpc}|{access_modifiers}|virtual|override|static|async)" # Most of these are c#
 reserved_keywords = fr"(public|static|var|const|foreach|for|if|else|switch|case|return|using)"
 valid_name = fr"([_a-zA-Z]+[_\-a-zA-Z0-9]*(?<!{reserved_keywords}))" 
 match_curlies = fr"(?<curlies>{{((?>[^{{}}]+)|(?&curlies))*}})" # Named group recursion on curled braces
@@ -97,13 +103,13 @@ op = fr"([\/%+\-*><]|\|\||&&|>=|<=|==|!=|\||&|\sin\s|\sas\s|\sis\s|\sand\s|\sor\
 op_l = fr"(new\s|!|not\s)" # Right binding operators
 op_r = fr"((?<!\n\s*)({match_brackets}|{match_braces}|{match_curlies}))" # Left binding operators. GD doesn't allow newline, cs does, for simplicity we won't allow them
 #fcall = fr"(?<!public .*)({valid_name}\s*{match_braces}\s*{match_curlies}*)" # Deprecated, function call is now an op_r
-full_name = fr"({valid_name}((\.{valid_name})*))" # Full name, including all dot accessors
-aterm = fr"({valid_value}|{valid_name})" # Atomic Terms without accessors (.)
-aterm_c = fr"({valid_value_c}|{valid_name})" # Atomic Terms without accessors (.)
+full_name = fr"({valid_name}((\.{valid_name})*))" # Full name, including all dot access_modifiers
+aterm = fr"({valid_value}|{valid_name})" # Atomic Terms without access_modifiers (.)
+aterm_c = fr"({valid_value_c}|{valid_name})" # Atomic Terms without access_modifiers (.)
 sterm = fr"(?<sterm>({aterm}|\((?&sterm)\))(\.{valid_name})*)" # Simple Terms without operators other than dot accessor
 #cterm = fr"{aterm}({op_r}(\.{full_name}){0,1})*"
-cterm = fr"(?<cterm>({aterm}|\((?&cterm)\))(\s*?{op_r}|\.{valid_name})*)" # Closed Terms without operators other than accessors of any kind
-cterm_c = fr"(?<cterm>({aterm_c}|\((?&cterm)\))(\s*?{op_r}|\.{valid_name})*)" # Closed Terms without operators other than accessors of any kind
+cterm = fr"(?<cterm>({aterm}|\((?&cterm)\))(\s*?{op_r}|\.{valid_name})*)" # Closed Terms without operators other than access_modifiers of any kind
+cterm_c = fr"(?<cterm>({aterm_c}|\((?&cterm)\))(\s*?{op_r}|\.{valid_name})*)" # Closed Terms without operators other than access_modifiers of any kind
 #valid_term = fr"(({op_l}\s*)*{sterm}(\s*{op_r})*((\s*{op}\s*({op_l}\s*)*{sterm})(\s*{op_r})*|\.[ \t]*{fcall}\s*{op_r}*)*)";
 valid_term = fr"(?<termo>(?!\s)(({op_l})*\s*?({cterm}|\(\s*(?&termo)\s*?\))\s*?((\s*{op}\s*|\.)(?&termo))*))";
 valid_term_c = fr"(?<termo>(?!\s)(({op_l})*\s*?({cterm_c}|\(\s*(?&termo)\s*?\))\s*?((\s*{op}\s*|\.)(?&termo))*))";
@@ -114,6 +120,11 @@ match_eol = fr"(?<eol>({match_comments_old}|{match_comments_new}|[\t ])*?$)" # R
 
 
 
+# FINAL lexical words (These provide named output groups and therefore should not be used elsewhere)
+match_full_function_gd = fr"(?P<A>[\t ]*)func[\t ]+(?P<Name>{valid_name})[\t ]*(?P<Params>{match_braces})([\t ]*->[\t ]*(?P<R_Type>.*))*[ \t]*:(?P<Comments>.*)\n(?P<Content>((\1[\t ]+.*\n)|{comment_or_empty})*)"
+match_type_hinting = fr"(?<!\/\/.*)(?<={valid_name}[\t ]*\( *.*)(?P<Name>{valid_name})[\t ]*:[\t ]*(?P<Type>{valid_name})"
+match_function_arguments = fr"(?<=^\s*{access_modifiers}+[\t ]+({valid_name}[\t ]+)?{valid_name}[\t ]*){match_braces}"
+match_function_header = fr"(?<=^\s*)(?P<AccessModifiers>{access_modifiers}+)[\t ]+((?P<Type>{valid_name})[\t ]+)?(?P<Name>{valid_name})[\t ]*(?P<Args>{match_braces})"
 
 # Default imports and aliases that almost every class needs.
 header = """
@@ -123,7 +134,30 @@ using Dictionary = Godot.Collections.Dictionary;
 using Array = Godot.Collections.Array;
 """;
 
+
+# Run code and return output
+def run(code,variables = {}):
+	results = variables
+	exec(regex.sub(fr"([\t ]*)return ({valid_name}|{valid_value})",fr"\1__result = \2\n\1return \2",code,0,flags),globals(),results)
+	return results["__result"];
+
+# Define the replacements. 
+# This can either be an array with 2 values, the first of which will match the target text locations, and the second of which will define how the matched text will be transformed/replaced.
+# Alternatively, it can be an object which matches a part of the string and passes it to children, who will then replace only the matched text.
+# Furthermore this allows for arbitrary functions to modify the matched text.
+
 replacements = [
+	# {
+	# 	# Test for new system. Either match or replacement is required
+	# 	"match":fr"return", # Match text to this. Pass result to children and/or replacement regex if it exists
+	# 	"children":[
+	# 		{
+	# 			"replacement":[fr"r",fr"bed"]
+	# 		}
+	# 	], # Children get matched contents of parent. If multiple children, subsequent children receive the modified versions (these may not necessarily still match the original pattern)
+	# 	"replacement":[fr"(.*)",r"\1"], # (Can be function or set of regex) Match result strings of match (or input text if match is undefined) after the children are done with it and do regex replace
+	# 	"replacement_f": lambda v: run("__result = v",{"v":v}) # Excecuted after everything else is done. Used by any rules that cannot be put into simple regex
+	# },
 	[fr"(?<=^\t*)" + fr" "*strip_tabs,fr"\t"],
 	# Clean up directives that are manually applied after regex replacements
 	[fr"^(\s*)tool\s*$"," "], 
@@ -143,28 +177,58 @@ replacements = [
 	
 
 	## Functions
-
-	# Function arguments, if they have a valid type
-	[fr"(?<!\/\/.*)(?<={valid_name}[\t ]*\( *.*)(?P<Name>{valid_name})[\t ]*:[\t ]*(?P<Type>{valid_name})",r"\g<Type> \g<Name>"], 
-	# replace function declarations, if possible use return type, otherwise leave blank
-	[fr"(?P<A>[\t ]*)func[\t ]+(?P<Name>{valid_name})[\t ]*(?P<Params>{match_braces})([\t ]*->[\t ]*(?P<R_Type>.*))*[ \t]*:(?P<Comments>.*)\n(?P<Content>((\1[\t ]+.*\n)|{comment_or_empty})*)",r"\1public \g<R_Type> \g<Name>\g<Params>\n\1{\1  \g<Comments>\n\g<Content>\1}\n\n"], 
-	# autocomplete function arguments via default values (bool). First limit selection to function signature, then run replacement over that section only.
-	[[fr"(?<=^\s*public[\t ]+({valid_name}[\t ]+)?{valid_name}[\t ]*){match_braces}",
-	fr"(?<=[,(]\s*?)(?P<A>{valid_name}\s*=\s*{valid_bool})"],fr"bool \g<A>"],
-	# autocomplete function arguments via default values (int)
-	[[fr"(?<=^\s*public[\t ]+({valid_name}[\t ]+)?{valid_name}[\t ]*){match_braces}",
-	fr"(?<=[,(]\s*?)(?P<A>{valid_name}\s*=\s*{valid_int})"],fr"int \g<A>"],
-	# autocomplete function arguments via default values (string)
-	[[fr"(?<=^\s*public[\t ]+({valid_name}[\t ]+)?{valid_name}[\t ]*){match_braces}",
-	fr"(?<=[,(]\s*?)(?P<A>{valid_name}\s*=\s*{valid_string})"],fr"string \g<A>"],
-	# autocomplete function arguments via default values (float)
-	[[fr"(?<=^\s*public[\t ]+({valid_name}[\t ]+)?{valid_name}[\t ]*){match_braces}",
-	fr"(?<=[,(]\s*?)(?P<A>{valid_name}\s*=\s*{valid_float})"],fr"float \g<A>"],
-	# autocomplete function arguments via default values (new T)
-	[[fr"(?<=^\s*public[\t ]+({valid_name}[\t ]+)?{valid_name}[\t ]*){match_braces}",
-	fr"(?<=[,(]\s*?)(?P<A>{valid_name}\s*=\s*new\s+(?P<Name>{full_name}))"],fr"\g<Name> \g<A>"],
-	# TODO : find async functions (ones that contain yield) and mark them async
-	#[fr"(^\s*public[\t ]+({func_prefix}[\t ]+)?({valid_name}[\t ]+)?{valid_name}[\t ]*){match_braces}{match_eol}\s*({match_curlies}&&((\s|.)*yield(\s|.)*))",fr"e"],
+	
+	
+	[match_type_hinting,r"\g<Type> \g<Name>"], # "a:B" to "B a" ; Both in function calls and definitions
+	{ # Match Function Defintions
+		"match":match_full_function_gd,
+		"children":[
+			{
+				# replace function declarations, if possible use return type, otherwise leave blank
+				"replacement":[match_full_function_gd,r"\1public \g<R_Type> \g<Name>\g<Params>\n\1{\1  \g<Comments>\n\g<Content>\1}\n\n"]
+			},
+			{
+				"match":match_function_arguments,
+				"children":[
+					{# autocomplete function arguments via default values (bool). First limit selection to function signature, then run replacement over that section only.
+						"replacement":[fr"(?<=[,(]\s*?)(?P<A>{valid_name}\s*=\s*{valid_bool})",fr"bool \g<A>"]
+					},
+					{# autocomplete function arguments via default values (int)
+						"replacement":[fr"(?<=[,(]\s*?)(?P<A>{valid_name}\s*=\s*{valid_int})",fr"int \g<A>"]
+					},
+					{# autocomplete function arguments via default values (string)
+						"replacement":[fr"(?<=[,(]\s*?)(?P<A>{valid_name}\s*=\s*{valid_string})",fr"string \g<A>"]
+					},
+					{# autocomplete function arguments via default values (float)
+						"replacement":[fr"(?<=[,(]\s*?)(?P<A>{valid_name}\s*=\s*{valid_float})",fr"float \g<A>"]
+					},
+					{# autocomplete function arguments via default values (new T)
+						"replacement":[fr"(?<=[,(]\s*?)(?P<A>{valid_name}\s*=\s*new\s+(?P<Name>{full_name}))",fr"\g<Name> \g<A>"]
+					}
+				]
+			},
+			{
+				"match":fr"[\w\W]*{separator}yield\s*\([\w\W]*", # Skip if the function doesnt contain the keyword yield, otherwise continue with its entirety
+				"children":[
+					{
+						"replacement":[fr"(?<={access_modifiers}+)(?![ \t]+async)",fr" async"], # Add async to function signature, right after "public"
+						#"replacement_f":lambda v: print("A",v) or v
+					}
+				],
+				
+			},
+			{
+				"match":fr"\A(?![\w\W]*return[ \t]+{valid_term}[\w\W]*)[\w\W]*", # Skip if the function contains a valued return, else continue in full
+				"children":[
+					{
+						"replacement":[fr"(?<=(^|\s)({func_prefix})+)[\t ]*(?=[\t ]*{valid_name}[ \t]*\()",fr" void "],
+						"replacement_f":lambda v: v
+					}
+				],
+				
+			}
+		],
+	},
 
 	## If/Else
 	
@@ -347,7 +411,11 @@ function_replacements = [
 ];
 
 variable_replacements = [
-	["PI","Mathf.Pi"] # TODO : Implement all global consts, ignore Node scope for now, use flag for that later
+	["PI","Mathf.Pi"],
+	["TAU","Mathf.Tau"],
+	["INF","Mathf.Inf"],
+	["NAN","Mathf.NaN"],
+	["self","this"],
 ]
 
 
@@ -377,8 +445,44 @@ def strip_duplicate_groups(reg):
 flags = regex.MULTILINE or regex.GLOBAL_FLAGS
 
 
+def _object_replace_child_call(v,obj):
+
+
+	if not 'children' in obj:
+		obj['children'] = []
+
+	for child in obj['children'] : 
+		v = object_replace(child,v); 
+
+
+	if 'replacement' in obj:
+		v = _try_replace(v,obj['replacement']);
+
+
+	if 'replacement_f' in obj:
+		v = obj['replacement_f'](v);
+
+
+	return v
+
+def object_replace(obj,text):
+	match = obj['match'] if 'match' in obj else False;
+	
+	if not match:
+		match = r"[\s\S]*" # Match anything
+	else:
+		match = strip_duplicate_groups(match);
+	
+	text = regex.subf(match,lambda v: _object_replace_child_call(v.group(0),obj),text,0,flags)
+
+	return text;
+
+	
+
+
+
 # Replace in multiple steps, by matching first
-def replace_matches(matches,replacement,text,depth=0):
+def array_replace(matches,replacement,text,depth=0):
 	sub_segment = matches[depth];
 	
 
@@ -397,9 +501,46 @@ def replace_matches(matches,replacement,text,depth=0):
 			if text == prev_text: # Repeatedly apply same operation until no more changes occur.
 				return text;
 	else:
-		result =  regex.subf(matches[depth],lambda v : replace_matches(matches,replacement,v.group(0),depth+1) ,text,0,flags)
+		result =  regex.subf(matches[depth],lambda v : array_replace(matches,replacement,v.group(0),depth+1) ,text,0,flags)
 		return result;
 	
+
+def _try_replace(text,replacer):
+	orig_text = text;
+	while True:
+		prev_text = text
+		if not isinstance(replacer, list): # is object
+			text = object_replace(replacer,text)
+			#print('obj')
+		else:
+			if isinstance(replacer[0], str): # is string
+				replacement = strip_duplicate_groups(replacer[0])
+				
+				#print('repl ', replacement)
+				#print('repl1 ', replacer[1])
+				#print('t ', text)
+				text = regex.sub(replacement, replacer[1], text,0,flags)
+				if replacer[1] == fr"\0":
+					print(prev_text)
+					print(text)
+				#print('str ', replacer[1])
+			elif isinstance(replacer[0],list): # Is array
+				text = array_replace(replacer[0],replacer[1],text)
+				#print('list')
+			else:
+				print("ERROR")
+
+		if text == prev_text: # Repeatedly apply same operation until no more changes occur.
+				break;
+		if len(text) > (len(orig_text) * 10 + 1000):
+			print(replacer)
+			print("SIZE GREW 10x, PRESUMED INFINITE BLOAT, ABORTING!")
+			print(text)
+			quit();
+			break;
+
+
+	return text
 
 # Open the file in read/write mode
 with open(filename,'r+') as f:
@@ -407,7 +548,7 @@ with open(filename,'r+') as f:
 	
 	print("PROCESSING -- " + filename)
 
-	orig_text = text;
+	
 
 	extending = regex.findall(r"extends (.*)\n",text);
 	if extending :
@@ -417,21 +558,7 @@ with open(filename,'r+') as f:
 	tool = len(regex.findall(r"^tool.*$",text,flags)) > 0
 
 	for pair in replacements:
-		
-		while True:
-			prev_text = text
-			if isinstance(pair[0], str): # is string
-				pair[0] = strip_duplicate_groups(pair[0])
-				text = regex.sub(pair[0], pair[1], text,0,flags)
-			else: # Is array
-				text = replace_matches(pair[0],pair[1],text)
-			if text == prev_text: # Repeatedly apply same operation until no more changes occur.
-					break;
-			if len(text) > len(orig_text) * 10:
-				print(pair)
-				print("SIZE GREW 10x, PRESUMED INFINITE BLOAT, ABORTING!")
-				quit();
-				break;
+		text = _try_replace(text,pair)
 
 
 	for pair in function_replacements:
@@ -443,7 +570,7 @@ with open(filename,'r+') as f:
 		text = regex.sub(pair[0], pair[1], text,0,flags)
 	
 	
-	
+
 	text = regex.sub("^","\t",text,0,flags); # Offset all the code by 1 tab, ready to be surrounded by class{...}
 
 	class_name = regex.match(r'.*(?=\.cs)',outname)[0];
