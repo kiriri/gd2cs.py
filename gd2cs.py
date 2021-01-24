@@ -32,8 +32,8 @@ except ImportError:
 # Keywords in strings or comments may be replaced
 # Nested Dictionaries generate excessive/invalid semicolons
 
-# parent calls .X => parent.X
-# TODO : No semicolon after {separator}new T()$ or other such values
+# TODO : parent calls .X => base.X
+# TODO : Replace missing types with __TYPE__ : Still missing var X fields and func(... defs)
 # TODO : Multiline strings
 # TODO : Rename {Builtin_Class}.aa_bb_cc to AaBbCc (Eg Engine.is_editor_hint)
 # TODO : unnamed enums
@@ -78,8 +78,8 @@ if not outname.endswith(".cs"):
 match_irrelevant = "((^\s*\n)|(\/\/.*\n))" # Irrelevant c#
 
 any_char = "[\w\W]"
-t0 = fr"(?<![\w\W])" # start of input
-eof = fr"(?![\w\W])" # end of input
+t0 = fr"\A" # start of input
+eof = fr"\z" # end of input
 separator = fr"([{{}}\[\]\s,:;=()])"
 comment_or_empty = "((^\s*\n)|(^\s*\/\/.*\n))"
 rpc = fr"(remote|master|puppet|remotesync|mastersync|puppetsync)";
@@ -122,8 +122,9 @@ match_eol = fr"(?<eol>({match_comments_old}|{match_comments_new}|[\t ])*?$)" # R
 
 
 
-# FINAL lexical words (These provide named output groups and therefore should not be used elsewhere)
+# FINAL lexical words (These provide fixed named output groups and therefore should not be used elsewhere)
 match_full_function_gd = fr"(?P<A>[\t ]*)func[\t ]+(?P<Name>{valid_name})[\t ]*(?P<Params>{match_braces})([\t ]*->[\t ]*(?P<R_Type>.*))*[ \t]*:(?P<Comments>.*)\n(?P<Content>((\1[\t ]+.*\n)|{comment_or_empty})*)"
+match_full_function_cs = fr"(?P<A>[\t ]*)({access_modifiers}[\t ]+)+(?P<R_Type>\S*)[\t ]+(?P<Name>{valid_name})[\t ]*(?P<Params>{match_braces})[\t ]*(?P<Comments>.*)\s*(?P<Content>{match_curlies})"
 match_type_hinting = fr"(?<!\/\/.*)(?<={valid_name}[\t ]*\( *.*)(?P<Name>{valid_name})[\t ]*:[\t ]*(?P<Type>{valid_name})"
 match_function_arguments = fr"(?<=^\s*{access_modifiers}+[\t ]+({valid_name}[\t ]+)?{valid_name}[\t ]*){match_braces}"
 match_function_header = fr"(?<=^\s*)(?P<AccessModifiers>{access_modifiers}+)[\t ]+((?P<Type>{valid_name})[\t ]+)?(?P<Name>{valid_name})[\t ]*(?P<Args>{match_braces})"
@@ -156,17 +157,17 @@ def to_pascal(text):
 
 replacements = [
 
-	# DOCUMENTATION / EXAMPLE :
+	# DOCUMENTATION / EXAMPLE of new system :
 
 	# {
-	# 	# Test for new system. Either match or replacement is required
+	#	"inverted":True, # If true, match all parts of the text that do NOT match "match". Essentially split the text by "match" and continue with the split parts individually.
 	# 	"match":fr"return", # Match text to this. Pass result to children and/or replacement regex if it exists
 	# 	"children":[
 	# 		{
 	# 			"replacement":[fr"r",fr"bed"]
 	# 		}
 	# 	], # Children get matched contents of parent. If multiple children, subsequent children receive the modified versions (these may not necessarily still match the original pattern)
-	# 	"replacement":[fr"(.*)",r"\1"], # (Can be function or set of regex) Match result strings of match (or input text if match is undefined) after the children are done with it and do regex replace
+	# 	"replacement":[fr"(.*)",r"\1"], # Match result strings of match (or input text if match is undefined) after the children are done with it and do regex replace
 	# 	"replacement_f": lambda v: run("__result = v",{"v":v}) # Excecuted after everything else is done. Used by any rules that cannot be put into simple regex
 	# },
 
@@ -181,14 +182,12 @@ replacements = [
 	# Same for array
 	[fr"(?<!(new Dictionary\(\)|new Array\(\)))(?<=([:,={{[(]|return\s+))(?P<W>{match_eol}*\s*)(\[(?P<C>([^\[]|(?R))*?)\])",r"\g<W>new Array(){\g<C>}"],
 	# Chars don't exist in gdscript, so let's assume all of those '-strings are normal "-strings.
-	#["\'","\""], 
-	#["#","//"],
 	{
-		
 		"match":fr"{valid_string_term}", 
 		"replacement":[fr"'",fr'"']# Single quote to double quote since in c# single quotes denote chars
 	},
-	{ # Anything not in a string
+	# Anything not in a string
+	{ 
 		"inverted":True,
 		"match":fr"{valid_string_term}",
 		"children":
@@ -211,12 +210,14 @@ replacements = [
 	# For loops
 	[fr"(?<=\n)([\t ]*)for[ ]+(.*)(->(.*))*:(.*)\n(((\1[\t ]+.*\n)|{comment_or_empty})*)",r"\1foreach(var \2)\5\n\1{\n\6\1}\n"], 
 	
+	
+	# "a:B" to "B a" ; Both in function calls and definitions as well as field declarations etc
+	[match_type_hinting,r"\g<Type> \g<Name>"], 
 
 	## Functions
-	
-	
-	[match_type_hinting,r"\g<Type> \g<Name>"], # "a:B" to "B a" ; Both in function calls and definitions
-	{ # Match Function Defintions
+
+	# Match Function Defintions
+	{ 
 		"match":match_full_function_gd,
 		"children":[
 			{
@@ -240,6 +241,12 @@ replacements = [
 					},
 					{# autocomplete function arguments via default values (new T)
 						"replacement":[fr"(?<=[,(]\s*?)(?P<A>{valid_name}\s*=\s*new\s+(?P<Name>{full_name}))",fr"\g<Name> \g<A>"]
+					},
+					{# autocomplete function arguments via default values (new T)
+						"replacement":[fr"(?<=[,(]\s*?)(?P<A>{valid_name}\s*=\s*new\s+(?P<Name>{full_name}))",fr"\g<Name> \g<A>"]
+					},
+					{# autocomplete function arguments without any implicit or explicit type hinting. Use __TYPE__ to denote user input being required.
+						"replacement":[fr"(?<=[,(]\s*?)(?P<A>{valid_name}\s*)(?=\s*[,)])",fr"__TYPE__ \g<A>"]
 					}
 				]
 			},
@@ -253,7 +260,7 @@ replacements = [
 				],
 				
 			},
-			{
+			{ 
 				"match":fr"\A(?![\w\W]*return[ \t]+{valid_term}[\w\W]*)[\w\W]*", # Skip if the function contains a valued return, else continue in full
 				"children":[
 					{
@@ -262,6 +269,10 @@ replacements = [
 					}
 				],
 				
+			},
+			{ # Method doesnt have a valid return type
+				"replacement":[fr"(?<=(^|\s)({func_prefix})+)[\t ]*(?=[\t ]*{valid_name}[ \t]*\()",fr" __TYPE__ "],
+				"replacement_f":lambda v: v
 			}
 		],
 	},
@@ -344,10 +355,16 @@ replacements = [
 
 	## Cleanup
 
+	
+	{ # Any class field (~variable declaration outside of function bodies) must have a well defined type. Replace var with __TYPE__ to notify user this needs to be defined manually.
+		"inverted":True,
+		"match":match_full_function_cs,
+		"replacement":[fr"(?<={separator}[\t ]*)var(?=[\t ]+{valid_name}[\t ]+=)",fr"__TYPE__"],
+	},
 	# Strip "pass", which is replaced already by (maybe empty) curlies.
 	[fr"^[\t ]*pass[\t ]*;*[\t ]*\n",""], 
 	
-	# Replace constants (multiples that follow clear patterns)
+	# Replace constants (multiple different names that follow clear patterns)
 	{
 		"match":fr"(?<={separator})PROPERTY_USAGE_([A-Z]*_?)*", # PROPERTY_USAGE_*
 		"children":[
