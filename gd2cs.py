@@ -33,6 +33,8 @@ except ImportError:
 # Nested Dictionaries generate excessive/invalid semicolons
 
 # parent calls .X => parent.X
+# TODO : No semicolon after {separator}new T()$ or other such values
+# TODO : Multiline strings
 # TODO : Rename {Builtin_Class}.aa_bb_cc to AaBbCc (Eg Engine.is_editor_hint)
 # TODO : unnamed enums
 # TODO : Mark variables public (unless name starts with _)
@@ -76,8 +78,8 @@ if not outname.endswith(".cs"):
 match_irrelevant = "((^\s*\n)|(\/\/.*\n))" # Irrelevant c#
 
 any_char = "[\w\W]"
-t0 = fr"(?<!\n)^" # start of input
-eof = fr"(?!\n)$" # end of input
+t0 = fr"(?<![\w\W])" # start of input
+eof = fr"(?![\w\W])" # end of input
 separator = fr"([{{}}\[\]\s,:;=()])"
 comment_or_empty = "((^\s*\n)|(^\s*\/\/.*\n))"
 rpc = fr"(remote|master|puppet|remotesync|mastersync|puppetsync)";
@@ -93,6 +95,7 @@ builtin_type = fr"(bool|uint|int|float|double|string|object|sbyte|byte|long|ulon
 valid_bool = fr"(true|false|True|False)"
 valid_int = fr"(-?[0-9]+)"
 valid_string = fr"(\".*?(?<!\\)\")"
+valid_string_term = fr"((?<!(#|//).*)(\".*?(?<!\\)\"|\'.*?(?<!\\)\'))"
 valid_float = fr"(-?([0-9]*\.[0-9]+|[0-9]+\.[0-9]*)f?)"
 valid_array = fr"({match_brackets})" # GD Definition
 valid_dictionary = fr"{match_curlies}" # GD Definition
@@ -143,12 +146,18 @@ def run(code,variables = {}):
 def to_pascal(text):
 	return text[0].upper() + text[1:].lower()
 
+#  def match_inverse(pattern): # May not be so simple
+#  	return fr"(?<={t0}|{pattern})([\s\S]*?)(?<=(?)\1)(?={pattern}|{eof})";
+
 # Define the replacements. 
 # This can either be an array with 2 values, the first of which will match the target text locations, and the second of which will define how the matched text will be transformed/replaced.
 # Alternatively, it can be an object which matches a part of the string and passes it to children, who will then replace only the matched text.
 # Furthermore this allows for arbitrary functions to modify the matched text.
 
 replacements = [
+
+	# DOCUMENTATION / EXAMPLE :
+
 	# {
 	# 	# Test for new system. Either match or replacement is required
 	# 	"match":fr"return", # Match text to this. Pass result to children and/or replacement regex if it exists
@@ -160,6 +169,9 @@ replacements = [
 	# 	"replacement":[fr"(.*)",r"\1"], # (Can be function or set of regex) Match result strings of match (or input text if match is undefined) after the children are done with it and do regex replace
 	# 	"replacement_f": lambda v: run("__result = v",{"v":v}) # Excecuted after everything else is done. Used by any rules that cannot be put into simple regex
 	# },
+
+
+	# Replace spaces at beginning of line with tabs where applicable (Required for offset/scope matching)
 	[fr"(?<=^\t*)" + fr" "*strip_tabs,fr"\t"],
 	# Clean up directives that are manually applied after regex replacements
 	[fr"^(\s*)tool\s*$"," "], 
@@ -169,13 +181,31 @@ replacements = [
 	# Same for array
 	[fr"(?<!(new Dictionary\(\)|new Array\(\)))(?<=([:,={{[(]|return\s+))(?P<W>{match_eol}*\s*)(\[(?P<C>([^\[]|(?R))*?)\])",r"\g<W>new Array(){\g<C>}"],
 	# Chars don't exist in gdscript, so let's assume all of those '-strings are normal "-strings.
-	["\'","\""], 
-	["#","//"],
-	# # Single line comments start with #. But # within strings or within comment bodies must not be touched!
-	# {
-	# 	"match":fr"(?<={t0}|{valid_string})([^\"]|\\\")*?(?={eof}|{valid_string})", # Anything that is not a valid string (between valid strings or start/end of input)
-	# 	"replacement":[fr"(?<!(#|//).*)#","//"]# Any # that is not part of a comment
-	# },
+	#["\'","\""], 
+	#["#","//"],
+	{
+		
+		"match":fr"{valid_string_term}", 
+		"replacement":[fr"'",fr'"']# Single quote to double quote since in c# single quotes denote chars
+	},
+	{ # Anything not in a string
+		"inverted":True,
+		"match":fr"{valid_string_term}",
+		"children":
+		[
+			{ # Anything not in a comment
+				"inverted":True,
+				"match":fr"(?<=(#|\/\/).*).*$", 
+				"children":[
+					{
+						"replacement":[fr"#",fr"//"]# Single line comments from # to //
+					}
+
+				]
+			}
+		]
+		
+	},
 	# Variant is System.Object in C#
 	[fr"(?<={separator})Variant(?={separator})",fr"System.Object"],
 	# For loops
@@ -512,7 +542,24 @@ def object_replace(obj,text):
 	else:
 		match = strip_duplicate_groups(match);
 	
-	text = regex.subf(match,lambda v: _object_replace_child_call(v.group(0),obj),text,0,flags)
+	inverted = obj['inverted'] if 'inverted' in obj else False
+	if not inverted:
+		text = regex.subf(match,lambda v: _object_replace_child_call(v.group(0),obj),text,0,flags)
+	else:
+		# TODO : Custom inversion
+		matches = regex.finditer(match,text,flags)
+		prev_i = 0
+		result = ""
+		for m in matches:
+			# print(m)
+			# print(text[prev_i:m.start()])
+			# print(m.group(0))
+			result += _object_replace_child_call(text[prev_i:m.start()],obj) + m.group(0)
+			prev_i = m.end()
+
+
+		result += _object_replace_child_call(text[prev_i:len(text)],obj)
+		text = result
 
 	return text;
 
