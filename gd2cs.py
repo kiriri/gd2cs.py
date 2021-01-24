@@ -85,7 +85,7 @@ comment_or_empty = "((^\s*\n)|(^\s*\/\/.*\n))"
 rpc = fr"(remote|master|puppet|remotesync|mastersync|puppetsync)";
 access_modifiers = fr"(public|private|protected)"
 func_prefix = fr"({rpc}|{access_modifiers}|virtual|override|static|async)" # Most of these are c#
-reserved_keywords = fr"(public|static|var|const|foreach|for|if|else|switch|case|return|using)"
+reserved_keywords = fr"(public|static|var|const|foreach|for|if|else|switch|case|return|using|new)"
 valid_name = fr"([_a-zA-Z]+[_\-a-zA-Z0-9]*(?<!{reserved_keywords}))" 
 match_curlies = fr"(?<curlies>{{((?>[^{{}}]+)|(?&curlies))*}})" # Named group recursion on curled braces
 match_braces = fr"(?<braces>\(((?>[^()]+)|(?&braces))*\))"
@@ -335,7 +335,7 @@ replacements = [
 
 	## SEMICOLONS
 
-	# semicolon at end of standalone terms (such as function calls)
+	# semicolon at end of standalone terms (such as function calls) (but never after values like new T() or {valid_value})
 	[fr"(?<![,]\s*)(?<=^[ \t]*)(?!{reserved_keywords}\s*\(*)(?P<Content>{valid_term_c}[ \t]*)(?P<Comment>{match_eol})(?!\s*[{{[(])",fr"\g<Content>;\g<Comment>"], 
 	# semicolon at end of assignments
 	[fr"((?<=^[ \t]*|((var|const|public|private|static|async|delegate|{match_brackets})[ \t])*)({valid_name} )?{valid_term}[\t ]*[\+\-]?=[\t ]*{valid_term}[ \t]*)(?P<E>{match_eol})(?!\s*[{{(])",fr"\1;\g<E>"], 
