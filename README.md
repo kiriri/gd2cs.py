@@ -106,7 +106,7 @@ public class GameDataTest2 : Node
 	enum {UNIT_NEUTRAL, UNIT_ENEMY, UNIT_ALLY};
 	enum Named {THING_1, THING_2, ANOTHER_THING = -1}
 	
-	[Export(Param)] static readonly Date Date = GD.Load("path");
+	[Export(Param)] static readonly Date Date = GD.Load("res://path");
 	const bool ABC = true;
 	float G {get{return getterA();} set{setterA(value);}}
 	float DEF = -0.1f ;// Step
@@ -117,7 +117,7 @@ public class GameDataTest2 : Node
 	[Signal] delegate void b(int a,Type b);
 	
 	
-	// Default Data (I recommend splitting this kind of stuff into separate json files in c//)
+	// Default Data (I recommend splitting this kind of stuff into separate json files in c#)
 	static readonly Dictionary _default_data = new Dictionary(){
 		{"t", 100},
 		{"r", "asfgh"},
