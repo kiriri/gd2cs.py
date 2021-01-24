@@ -22,9 +22,14 @@ Example Code Conversion (apr. real life example. Intentionally formatted badly t
 tool
 extends Node
 
+
+enum {UNIT_NEUTRAL, UNIT_ENEMY, UNIT_ALLY}
+enum Named {THING_1, THING_2, ANOTHER_THING = -1}
+
 export(Date,Param)      const Date = preload("path")
 const ABC = true
-var DEF = 0.1 # Step
+var G:float setget setterA, getterA
+var DEF = -0.1 # Step
 
 var f = typeof(4+6/12)
 
@@ -41,6 +46,12 @@ const _default_data = {
 	"t":{"e":{"g":1,"f":2},},
 };
 
+func setterA(v:float):
+	return
+	pass
+
+func getterA()->float:
+	return 1.
 
 func ready():
 	var s = range(abs(-1),randi())
@@ -59,7 +70,7 @@ func ready():
 # Do stuff
 func r(value:T,val=false,s)->bool:
 	if value == null : return !true
-	
+
 	var type = typeof(value)
 	match type :
 		TYPE_BOOL,TYPE_INT,TYPE_NIL:
@@ -70,7 +81,9 @@ func r(value:T,val=false,s)->bool:
 				result[k] = value[k]
 			return result
 			
-			
+func default_async_function():
+	yield(self,'a');
+
 ```
 
 <br>
@@ -90,9 +103,13 @@ using Array = Godot.Collections.Array;
 public class GameDataTest2 : Node
 {
 	 
+	enum {UNIT_NEUTRAL, UNIT_ENEMY, UNIT_ALLY};
+	enum Named {THING_1, THING_2, ANOTHER_THING = -1}
+	
 	[Export(Param)] static readonly Date Date = GD.Load("path");
 	const bool ABC = true;
-	float DEF = 0.1f ;// Step
+	float G {get{return getterA();} set{setterA(value);}}
+	float DEF = -0.1f ;// Step
 	
 	var f = (4+6/12).GetType();
 	
@@ -109,27 +126,38 @@ public class GameDataTest2 : Node
 		{"t",new Dictionary(){{"e",new Dictionary(){{"g",1},{"f",2}}},}},
 	};
 	
+	public void setterA(float v)
+	{  
+		return;
+	
+	}
+	
+	public float getterA()
+	{  
+		return 1.;
+	
+	}
 	
 	public  ready()
 	{  
 		var s = GD.Range(Mathf.Abs(-1),GD.Randi());
 		
-	    if(ABC) // Comment
-	    {
-	        System.Diagnostics.Debug.Assert(false);
-	    }
-	    else if(false)
-	    {
-	        GD.Print("Hello"+" "+"World");
-	    }
-	    else
-	    {
-	        (a+b)()
-	    }
-	    return new Array(){
-	    new Array(){0,e,new Array(){0,new Dictionary(){}}}, // a
-	    new Array(){1,new Dictionary(){},new Array(){0,new Dictionary(){}}},
-	    };
+		if(ABC) // Comment
+		{
+			System.Diagnostics.Debug.Assert(false);
+		}
+		else if(false)
+		{
+			GD.Print("Hello"+" "+"World");
+		}
+		else
+		{
+			(a+b)()
+		}
+		return new Array(){
+		new Array(){0,e,new Array(){0,new Dictionary(){}}}, // a
+		new Array(){1,new Dictionary(){},new Array(){0,new Dictionary(){}}},
+		};
 	
 	// Do stuff
 	}
@@ -138,16 +166,16 @@ public class GameDataTest2 : Node
 	{  
 		if(value == null)
 			 return !true;
-		
+	
 		var type = (value).GetType();
 		switch( type )
 		{
-			case TYPE_BOOL:
-			case TYPE_INT:
-			case TYPE_NIL:
+			case typeof(bool):
+			case typeof(int):
+			case null:
 				return value;
 				break;
-			case TYPE_DICTIONARY:
+			case typeof(Dictionary):
 				Dictionary result = new Dictionary(){};
 				foreach(var k in value)
 				{
@@ -157,6 +185,11 @@ public class GameDataTest2 : Node
 				
 				break;
 		}
+	}
+	
+	public async void default_async_function()
+	{  
+		await ToSignal(this,"a");
 	}
 	
 				
