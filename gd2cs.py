@@ -37,9 +37,6 @@ except ImportError:
 # TODO : unnamed enums
 # TODO : Mark variables public (unless name starts with _)
 # TODO : Optionally rename fields
-# TODO : Mark functions async if they contain yield (not in comments!)
-# TODO : Mark functions as void if they don't contain a return (with a valid_term)
-# TODO : global variables such as PI
 # TODO : If extend Node, convert all Node function to capitalized forms
 # TODO : Fix Comments in strings (don't convert!) (Use ?: to drop them?)
 # TODO : Process entire folders at once, recursively -r flag
@@ -79,6 +76,8 @@ if not outname.endswith(".cs"):
 match_irrelevant = "((^\s*\n)|(\/\/.*\n))" # Irrelevant c#
 
 any_char = "[\w\W]"
+t0 = fr"(?<!\n)^" # start of input
+eof = fr"(?!\n)$" # end of input
 separator = fr"([{{}}\[\]\s,:;=()])"
 comment_or_empty = "((^\s*\n)|(^\s*\/\/.*\n))"
 rpc = fr"(remote|master|puppet|remotesync|mastersync|puppetsync)";
@@ -171,8 +170,11 @@ replacements = [
 	[fr"(?<!(new Dictionary\(\)|new Array\(\)))(?<=([:,={{[(]|return\s+))(?P<W>{match_eol}*\s*)(\[(?P<C>([^\[]|(?R))*?)\])",r"\g<W>new Array(){\g<C>}"],
 	# Chars don't exist in gdscript, so let's assume all of those '-strings are normal "-strings.
 	["\'","\""], 
-	# Single line comments start with # ( TODO This may mess up strings though!)
-	["#","//"], 
+	# Single line comments start with #. But # within strings or within comment bodies must not be touched!
+	{
+		"match":fr"(?<={t0}|{valid_string})([^\"]|\\\")*?(?={eof}|{valid_string})", # Anything that is not a valid string (between valid strings or start/end of input)
+		"replacement":[fr"(?<!(#|//).*)#","//"]# Any # that is not part of a comment
+	},
 	# Variant is System.Object in C#
 	[fr"(?<={separator})Variant(?={separator})",fr"System.Object"],
 	# For loops
