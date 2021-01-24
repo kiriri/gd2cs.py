@@ -26,7 +26,7 @@ extends Node
 enum {UNIT_NEUTRAL, UNIT_ENEMY, UNIT_ALLY}
 enum Named {THING_1, THING_2, ANOTHER_THING = -1}
 
-export(Date,Param)      const Date = preload("path")
+export(Date,Param)      const Date = preload("res://path")
 const ABC = true
 var G:float setget setterA, getterA
 var DEF = -0.1 # Step
@@ -83,7 +83,7 @@ func r(value:T,val=false,s)->bool:
 			
 func default_async_function():
 	yield(self,'a');
-
+			
 ```
 
 <br>
