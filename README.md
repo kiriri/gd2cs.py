@@ -17,7 +17,7 @@ Example :<br>
 python3 gd2cs.py/gd2cs.py -i "Test_Script_Godot.gd" -o "Output/TestScript.cs"<br>
 <br>
 Example Code Conversion (apr. real life example. Intentionally formatted badly to show where the converter will fail) :<br>
-```python
+```GDScript
 tool
 extends Node
 
