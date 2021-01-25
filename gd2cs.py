@@ -32,8 +32,6 @@ except ImportError:
 # Keywords in strings or comments may be replaced
 # Nested Dictionaries generate excessive/invalid semicolons
 
-# TODO : parent calls .X => base.X
-# TODO : Multiline strings
 # TODO : Rename {Builtin_Class}.aa_bb_cc to AaBbCc (Eg Engine.is_editor_hint)
 # TODO : unnamed enums
 # TODO : Mark variables public (unless name starts with _)
@@ -76,7 +74,7 @@ if not outname.endswith(".cs"):
 match_irrelevant = "((^\s*\n)|(\/\/.*\n))" # Irrelevant c#
 
 any_char = "[\w\W]"
-t0 = fr"\A" # start of input
+t0 = fr"(?<!\n)^" # start of input ( Should be \A if that token exists )
 eof = fr"\z" # end of input
 separator = fr"([{{}}\[\]\s,:;=()])"
 comment_or_empty = "((^\s*\n)|(^\s*\/\/.*\n))"
@@ -94,6 +92,7 @@ valid_bool = fr"(true|false|True|False)"
 valid_int = fr"(-?[0-9]+)"
 valid_string = fr"(\".*?(?<!\\)\")"
 valid_string_term = fr"((?<!(#|//).*)(\".*?(?<!\\)\"|\'.*?(?<!\\)\'))"
+valid_gd_only_string_term = fr"((?<!(#|//).*)(\'([^']|\\')*?'(?<!\\')))"
 valid_float = fr"(-?([0-9]*\.[0-9]+|[0-9]+\.[0-9]*)f?)"
 valid_array = fr"({match_brackets})" # GD Definition
 valid_dictionary = fr"{match_curlies}" # GD Definition
@@ -158,6 +157,7 @@ replacements = [
 	# DOCUMENTATION / EXAMPLE of new system :
 
 	# {
+	#	"repeat":False, # If False, only run this replacement once. Otherwise repeat until no more changes occur. Default True
 	#	"inverted":True, # If true, match all parts of the text that do NOT match "match". Essentially split the text by "match" and continue with the split parts individually.
 	# 	"match":fr"return", # Match text to this. Pass result to children and/or replacement regex if it exists
 	# 	"children":[
@@ -169,217 +169,258 @@ replacements = [
 	# 	"replacement_f": lambda v: run("__result = v",{"v":v}) # Excecuted after everything else is done. Used by any rules that cannot be put into simple regex
 	# },
 
+{
+	"repeat":False,
+	"match": fr"[\w\W]*",
+	"children":
+	[
 
-	# Replace spaces at beginning of line with tabs where applicable (Required for offset/scope matching)
-	[fr"(?<=^\t*)" + fr" "*strip_tabs,fr"\t"],
-	# Clean up directives that are manually applied after regex replacements
-	[fr"^(\s*)tool\s*$"," "], 
-	[fr"^(\s*)extends\s*.*\s*$"," "],
-	# Turn lowest level unprocessed dictionaries. KV pairs are still of form K:V though
-	[fr"(?<!(new Dictionary\(\)|new Array\(\)))(?<=([:,={{[(]|return\s+))(?P<W>{match_eol}*\s*)(?P<C>{match_curlies})",r"\g<W>new Dictionary()\g<C>"], 
-	# Same for array
-	[fr"(?<!(new Dictionary\(\)|new Array\(\)))(?<=([:,={{[(]|return\s+))(?P<W>{match_eol}*\s*)(\[(?P<C>([^\[]|(?R))*?)\])",r"\g<W>new Array(){\g<C>}"],
-	# Chars don't exist in gdscript, so let's assume all of those '-strings are normal "-strings.
-	{
-		"match":fr"{valid_string_term}", 
-		"replacement":[fr"'",fr'"']# Single quote to double quote since in c# single quotes denote chars
-	},
-	# Anything not in a string
-	{ 
-		"inverted":True,
-		"match":fr"{valid_string_term}",
-		"children":
-		[
-			{ # Anything not in a comment
-				"inverted":True,
-				"match":fr"(?<=(#|\/\/).*).*$", 
-				"children":[
-					{
-						"replacement":[fr"#",fr"//"]# Single line comments from # to //
-					}
+		# Replace spaces at beginning of line with tabs where applicable (Required for offset/scope matching)
+		[fr"(?<=^\t*)" + fr" "*strip_tabs,fr"\t"],
+		# Clean up directives that are manually applied after regex replacements
+		[fr"^\s*tool\s*$"," "], 
+		[fr"^\s*extends\s*.*\s*$"," "],
+		# Turn lowest level unprocessed dictionaries. KV pairs are still of form K:V though
+		[fr"(?<!(new Dictionary\(\)|new Array\(\)))(?<=([:,={{[(]|return\s+))(?P<W>{match_eol}*\s*)(?P<C>{match_curlies})",r"\g<W>new Dictionary()\g<C>"], 
+		# Same for array
+		[fr"(?<!(new Dictionary\(\)|new Array\(\)))(?<=([:,={{[(]|return\s+))(?P<W>{match_eol}*\s*)(\[(?P<C>([^\[]|(?R))*?)\])",r"\g<W>new Array(){\g<C>}"],
+		# Chars don't exist in gdscript, so let's assume all of those '-strings are normal "-strings.
+		# {
+		# 	"repeat":False,
+		# 	"match":fr"{valid_string_term}",
+		# 	"replacement":[fr"(?<=^@?)'(.*)'$",fr'"\1"']# Single quote to double quote since in c# single quotes denote chars
+		# },
+		# Turn single quote strings into double quote ones. Format the string's content to match.
+		{
+			"repeat":False,
+			"match":fr"{valid_gd_only_string_term}", # Single quotes only
+			"children":[
+				{
+					"match":fr"(?<=^(\"|'))[\s\S]*(?=(\"|')$)", # Match string content only
+					"replacement":[fr"(?<!\\)\"",fr"\""], # Escape double quotes since new string will now be escaped via double quotes
+					
+				}
+			],
+			"replacement":[fr"(?<=^@?)'([\w\W]*)'$",fr'"\1"'], # Single quote to double quote since in c# single quotes denote chars
+			
+		},
+		# Anything not in a string
+		{ 
+			"inverted":True,
+			"match":fr"{valid_string_term}",
+			"children":
+			[
+				{ # Anything not in a comment
+					"inverted":True,
+					"match":fr"(?<=(#|\/\/).*).*$", 
+					"children":[
+						{
+							"replacement":[fr"#",fr"//"]# Single line comments from # to //
+						}
 
-				]
-			}
-		]
+					]
+				}
+			]
+			
+		},
+		# Variant is System.Object in C#
+		[fr"(?<={separator})Variant(?={separator})",fr"System.Object"],
+		# For loops
+		[fr"(?<=\n)([\t ]*)for[ ]+(.*)(->(.*))*:(.*)\n(((\1[\t ]+.*\n)|{comment_or_empty})*)",r"\1foreach(var \2)\5\n\1{\n\6\1}\n"], 
 		
-	},
-	# Variant is System.Object in C#
-	[fr"(?<={separator})Variant(?={separator})",fr"System.Object"],
-	# For loops
-	[fr"(?<=\n)([\t ]*)for[ ]+(.*)(->(.*))*:(.*)\n(((\1[\t ]+.*\n)|{comment_or_empty})*)",r"\1foreach(var \2)\5\n\1{\n\6\1}\n"], 
-	
-	
-	# "a:B" to "B a" ; Both in function calls and definitions as well as field declarations etc
-	[match_type_hinting,r"\g<Type> \g<Name>"], 
+		
+		# "a:B" to "B a" ; Both in function calls and definitions as well as field declarations etc
+		[match_type_hinting,r"\g<Type> \g<Name>"], 
 
-	## Functions
+		## Functions
 
-	# Match Function Defintions
-	{ 
-		"match":match_full_function_gd,
-		"children":[
-			{
-				# replace function declarations, if possible use return type, otherwise leave blank
-				"replacement":[match_full_function_gd,r"\1public \g<R_Type> \g<Name>\g<Params>\n\1{\1  \g<Comments>\n\g<Content>\1}\n\n"]
-			},
-			{
-				"match":match_function_arguments,
-				"children":[
-					{# autocomplete function arguments via default values (bool). First limit selection to function signature, then run replacement over that section only.
-						"replacement":[fr"(?<=[,(]\s*?)(?P<A>{valid_name}\s*=\s*{valid_bool})",fr"bool \g<A>"]
-					},
-					{# autocomplete function arguments via default values (int)
-						"replacement":[fr"(?<=[,(]\s*?)(?P<A>{valid_name}\s*=\s*{valid_int})",fr"int \g<A>"]
-					},
-					{# autocomplete function arguments via default values (string)
-						"replacement":[fr"(?<=[,(]\s*?)(?P<A>{valid_name}\s*=\s*{valid_string})",fr"string \g<A>"]
-					},
-					{# autocomplete function arguments via default values (float)
-						"replacement":[fr"(?<=[,(]\s*?)(?P<A>{valid_name}\s*=\s*{valid_float})",fr"float \g<A>"]
-					},
-					{# autocomplete function arguments via default values (new T)
-						"replacement":[fr"(?<=[,(]\s*?)(?P<A>{valid_name}\s*=\s*new\s+(?P<Name>{full_name}))",fr"\g<Name> \g<A>"]
-					},
-					{# autocomplete function arguments via default values (new T)
-						"replacement":[fr"(?<=[,(]\s*?)(?P<A>{valid_name}\s*=\s*new\s+(?P<Name>{full_name}))",fr"\g<Name> \g<A>"]
-					},
-					{# autocomplete function arguments without any implicit or explicit type hinting. Use __TYPE__ to denote user input being required.
-						"replacement":[fr"(?<=[,(]\s*?)(?P<A>{valid_name}\s*)(?=\s*[,)])",fr"__TYPE__ \g<A>"]
-					}
-				]
-			},
-			{
-				"match":fr"[\w\W]*{separator}yield\s*\([\w\W]*", # Skip if the function doesnt contain the keyword yield, otherwise continue with its entirety
-				"children":[
-					{
-						"replacement":[fr"(?<={access_modifiers}+)(?![ \t]+async)",fr" async"], # Add async to function signature, right after "public"
-						#"replacement_f":lambda v: print("A",v) or v
-					}
-				],
-				
-			},
-			{ 
-				"match":fr"\A(?![\w\W]*return[ \t]+{valid_term}[\w\W]*)[\w\W]*", # Skip if the function contains a valued return, else continue in full
-				"children":[
-					{
-						"replacement":[fr"(?<=(^|\s)({func_prefix})+)[\t ]*(?=[\t ]*{valid_name}[ \t]*\()",fr" void "],
-						"replacement_f":lambda v: v
-					}
-				],
-				
-			},
-			{ # Method doesnt have a valid return type
-				"replacement":[fr"(?<=(^|\s)({func_prefix})+)[\t ]*(?=[\t ]*{valid_name}[ \t]*\()",fr" __TYPE__ "],
-				"replacement_f":lambda v: v
-			}
-		],
-	},
+		# Match Function Defintions
+		{ 
+			"repeat":False,
+			"match":match_full_function_gd,
+			"children":[
+				{
+					"repeat":False,
+					# replace function declarations, if possible use return type, otherwise leave blank
+					"replacement":[match_full_function_gd,r"\1public \g<R_Type> \g<Name>\g<Params>\n\1{\1  \g<Comments>\n\g<Content>\1}\n\n"]
+				},
+				{
+					"repeat":False,
+					"match":match_function_arguments,
+					"children":[
+						{# autocomplete function arguments via default values (bool). First limit selection to function signature, then run replacement over that section only.
+							"replacement":[fr"(?<=[,(]\s*?)(?P<A>{valid_name}\s*=\s*{valid_bool})",fr"bool \g<A>"]
+						},
+						{# autocomplete function arguments via default values (int)
+							"replacement":[fr"(?<=[,(]\s*?)(?P<A>{valid_name}\s*=\s*{valid_int})",fr"int \g<A>"]
+						},
+						{# autocomplete function arguments via default values (string)
+							"replacement":[fr"(?<=[,(]\s*?)(?P<A>{valid_name}\s*=\s*{valid_string})",fr"string \g<A>"]
+						},
+						{# autocomplete function arguments via default values (float)
+							"replacement":[fr"(?<=[,(]\s*?)(?P<A>{valid_name}\s*=\s*{valid_float})",fr"float \g<A>"]
+						},
+						{# autocomplete function arguments via default values (new T)
+							"replacement":[fr"(?<=[,(]\s*?)(?P<A>{valid_name}\s*=\s*new\s+(?P<Name>{full_name}))",fr"\g<Name> \g<A>"]
+						},
+						{# autocomplete function arguments via default values (new T)
+							"replacement":[fr"(?<=[,(]\s*?)(?P<A>{valid_name}\s*=\s*new\s+(?P<Name>{full_name}))",fr"\g<Name> \g<A>"]
+						},
+						{# autocomplete function arguments without any implicit or explicit type hinting. Use __TYPE__ to denote user input being required.
+							"replacement":[fr"(?<=[,(]\s*?)(?P<A>{valid_name}\s*)(?=\s*[=,)])",fr"__TYPE__ \g<A>"]
+						}
+					]
+				},
+				{
+					"repeat":False,
+					"match":fr"[\w\W]*{separator}yield\s*\([\w\W]*", # Skip if the function doesnt contain the keyword yield, otherwise continue with its entirety
+					"children":[
+						{
+							"replacement":[fr"(?<={access_modifiers}+)(?![ \t]+async)",fr" async"], # Add async to function signature, right after "public"
+							#"replacement_f":lambda v: print("A",v) or v
+						}
+					],
+					
+				},
+				{ # Set return type to void if no return __TYPE__; exists
+					"repeat":False,
+					"match":fr"{t0}(?![\w\W]*(?<!\/\/[^\n]*)return[ \t]+{valid_term}[\w\W]*)[\w\W]*", # Skip if the function contains a valued return, else continue in full
+					"children":[
+						{
+							"replacement":[fr"(?<=(^|\s)({func_prefix})+)[\t ]*(?=[\t ]*{valid_name}[ \t]*\()",fr" void "],
+							"replacement_f":lambda v: (print("\n-------\n"+v) if '_trigger_all_hooks' in v else False) or v
+						}
+					],
+					
+				},
+				{ # Method doesnt have a valid return type
+					"repeat":False,
+					"replacement":[fr"(?<=(^|\s)({func_prefix})+)[\t ]*(?=[\t ]*{valid_name}[ \t]*\()",fr" __TYPE__ "],
+					#"replacement_f":lambda v: v
+				}
+			],
+		},
 
-	## If/Else
-	
-	# replace if/elif blocks 
-	[fr"^(?P<A>[ \t]*)(?P<B>if|elif)(?=[\t \(])[\t ]*(?P<C>({valid_term}){{1,1}})[ \t]*:(?P<Comment>{match_eol})(?P<E>\n({comment_or_empty}*(\1[\t ]+.*\n)*))",r"\g<A>\g<B>(\g<C>)\g<Comment>\n\g<A>{\g<E>\g<A>}\n"], 
-	# single line if/else : * (This must not capture subsequent indendented lines)
-	[fr"^(?P<A>[ \t]*)(?P<B>if|elif)(?=[\t \(])[\t ]*(?P<C>({valid_term}){{1,1}})[ \t]*:(?P<D>[^\n]*?)(?P<Comment>{match_eol})",r"\g<A>\g<B>(\g<C>)\g<Comment>\n\g<A>\t\g<D>"], 
-	# elif
-	[fr"(?<={separator})elif(?={separator})","else if"],
-	# replace else
-	[fr"^(?P<A>[ \t]*)(?P<B>else)[\t ]*:(?P<D>[^\n]*)\n(?P<E>((\1[\t ]+.*(\n|$)|{comment_or_empty})*))",r"\g<A>\g<B>\g<D>\n\g<A>{\n\g<E>\g<A>}\n"],
-	# inline if else
-	[fr"((?=[^\n]*[\t ]+if[ \t]+[^\n]+[ \t]+else[ \t]+[^\n]+)(?P<A>{valid_term})[ \t]+if[ \t]+(?P<B>{valid_term})[ \t]+else[ \t]+(?P<C>{valid_term}))",fr"\g<B> ? \g<A> : \g<C>"],
+		## If/Else
+		
+		# replace if/elif blocks 
+		[fr"^(?P<A>[ \t]*)(?P<B>if|elif)(?=[\t \(])[\t ]*(?P<C>({valid_term}){{1,1}})[ \t]*:(?P<Comment>{match_eol})(?P<E>\n({comment_or_empty}*(\1[\t ]+.*\n)*)*)",r"\g<A>\g<B>(\g<C>)\g<Comment>\n\g<A>{\g<E>\g<A>}\n"], 
+		# single line if/else : * (This must not capture subsequent indendented lines)
+		[fr"^(?P<A>[ \t]*)(?P<B>if|elif)(?=[\t \(])[\t ]*(?P<C>({valid_term}){{1,1}})[ \t]*:(?P<D>[^\n]*?)(?P<Comment>{match_eol})",r"\g<A>\g<B>(\g<C>)\g<Comment>\n\g<A>\t\g<D>"], 
+		# elif
+		[fr"(?<={separator})elif(?={separator})","else if"],
+		# replace else
+		[fr"^(?P<A>[ \t]*)(?P<B>else)[\t ]*:(?P<D>[^\n]*)\n(?P<E>((\1[\t ]+.*(\n|$)|{comment_or_empty})*))",r"\g<A>\g<B>\g<D>\n\g<A>{\n\g<E>\g<A>}\n"],
+		# inline if else
+		[fr"((?=[^\n]*[\t ]+if[ \t]+[^\n]+[ \t]+else[ \t]+[^\n]+)(?P<A>{valid_term})[ \t]+if[ \t]+(?P<B>{valid_term})[ \t]+else[ \t]+(?P<C>{valid_term}))",fr"\g<B> ? \g<A> : \g<C>"],
 
-	## Variable Declarations
+		## Variable Declarations
 
-	# Variable definitions, if they have a valid type
-	[fr"var[\t ]+(?P<Name>{valid_name})[\t ]*:[\t ]*(?P<Type>{valid_name})",r"\g<Type> \g<Name>"], 
-	# Signals
-	[fr"(?<={separator})signal(?P<R>\s+{valid_name}\s*{match_braces})[\t ]*\;*(?={match_eol})",fr"[Signal] delegate void\g<R>;"],
-	# Unidentifiable variables const var
-	[fr"(?<={separator}const\s+)(?={valid_name}\s*=)",r"var "], 
-	# Auto identify variables from export hints
-	[fr"(?<={separator})export\s*\(\s*(?P<T>{valid_term})\s*(,\s*(?P<A>.*?)?)\s*\)\s*(?P<B>(const\s+)?)var(?=\s+{valid_name}\s*=)",fr"[Export(\g<A>)] \g<B> \g<T>"],
-	# Auto identify bools. TODO : Also accept simple static terms such as 5*5, !true, "a" in ["a","b","c"]
-	[fr"(?<={separator})var(?=\s+{valid_name}\s*=\s*{valid_bool}(.*))",r"bool"],
-	# Auto identify float
-	[fr"(?<={separator})var(?P<A>\s+{valid_name}\s*=\s*{valid_float})",r"float\g<A>f"],  
-	# Auto identify integers. 
-	[fr"(?<={separator})var(?=\s+{valid_name}\s*=\s*{valid_int}(.*))",r"int"], 
-	# Auto identify string
-	[fr"(?<={separator})var(?=\s+{valid_name}\s*=\s*{valid_string}(.*))",r"string"], 
-	# Auto identify Object
-	[fr"(?<=\s|^)var\s+(?P<A>{valid_name})(?=\s*=\s*new\s+(?P<B>{full_name})(.*))",fr"\g<B> \g<A>"], 
-	# const => static readonly unless value is struct
-	[fr"const[\t ]+(?!{builtin_type}[\t ])(?={valid_name}[\t ]+{valid_name}[\t ]+=)",fr"static readonly "],
-	# setget
-	[fr"(?<=\s)setget[ \t]+(?P<S>{valid_name})((,)[ \t]*(?P<G>{valid_name}))",r"{get{return \g<G>();} set{\g<S>(value);}}"],
-	[fr"(?<=\s)setget[ \t]+(?P<S>{valid_name})",r"{set{\g<S>(value);}}"],
-	[fr"(?<=\s)setget[ \t]+((,)[ \t]*(?P<G>{valid_name}))",r"{get{return \g<G>();}}"],
+		# Variable definitions, if they have a valid type
+		[fr"var[\t ]+(?P<Name>{valid_name})[\t ]*:[\t ]*(?P<Type>{valid_name})",r"\g<Type> \g<Name>"], 
+		# Signals
+		[fr"(?<={separator})signal(?P<R>\s+{valid_name}\s*{match_braces})[\t ]*\;*(?={match_eol})",fr"[Signal] delegate void\g<R>;"],
+		# Unidentifiable variables const var
+		[fr"(?<={separator}const\s+)(?={valid_name}\s*=)",r"var "], 
+		# Auto identify variables from export hints
+		[fr"(?<={separator})export\s*\(\s*(?P<T>{valid_term})\s*(,\s*(?P<A>.*?)?)\s*\)\s*(?P<B>(const\s+)?)var(?=\s+{valid_name}\s*=)",fr"[Export(\g<A>)] \g<B> \g<T>"],
+		# Auto identify bools. TODO : Also accept simple static terms such as 5*5, !true, "a" in ["a","b","c"]
+		[fr"(?<={separator})var(?=\s+{valid_name}\s*=\s*{valid_bool}(.*))",r"bool"],
+		# Auto identify float
+		[fr"(?<={separator})var(?P<A>\s+{valid_name}\s*=\s*{valid_float})",r"float\g<A>f"],  
+		# Auto identify integers. 
+		[fr"(?<={separator})var(?=\s+{valid_name}\s*=\s*{valid_int}(.*))",r"int"], 
+		# Auto identify string
+		[fr"(?<={separator})var(?=\s+{valid_name}\s*=\s*{valid_string}(.*))",r"string"], 
+		# Auto identify Object
+		[fr"(?<=\s|^)var\s+(?P<A>{valid_name})(?=\s*=\s*new\s+(?P<B>{full_name})(.*))",fr"\g<B> \g<A>"], 
+		# const => static readonly unless value is struct
+		[fr"const[\t ]+(?!{builtin_type}[\t ])(?={valid_name}[\t ]+{valid_name}[\t ]+=)",fr"static readonly "],
+		# setget
+		[fr"(?<=\s)setget[ \t]+(?P<S>{valid_name})((,)[ \t]*(?P<G>{valid_name}))",r"{get{return \g<G>();} set{\g<S>(value);}}"],
+		[fr"(?<=\s)setget[ \t]+(?P<S>{valid_name})",r"{set{\g<S>(value);}}"],
+		[fr"(?<=\s)setget[ \t]+((,)[ \t]*(?P<G>{valid_name}))",r"{get{return \g<G>();}}"],
 
-	## Operators
+		## Operators
 
-	# not => !
-	[fr"(?<={separator})not(?=[\s(])\s*","!"], 
-	# Direct casts
-	[fr"(?<={separator})(\s*){builtin_type}\s*\(",fr"\2(\3)("], 
-	# Builtin constructors, like "Vector2()" => "new Vector2()"
-	[fr"(?<={separator})(?<!new\s+)(?P<A>\s*)(?P<B>{builtin_constructors})\s*\(",fr"\g<A>new \g<B>("],
-	# typeof(v) => v.GetType()
-	[fr"(?<={separator}\s*)typeof\s*{match_braces}",r"\2.GetType()"], 
-	# TODO : Don't affect strings and comments
-	[r"(?<=\s)and(?=\s)","&&"], 
-	[r"(?<=\s)or(?=\s)","||"],
-	# [fr"{cterm}\s+in\s+{cterm}",fr""] # Ignore "in" operator for now due to complicated operator binding situation.
-	# Turn all remaining A : B into automatic array pairs {A,B} , presumably part of dictionary initiation.
-	[fr"(?<! \/\/.*)(\"(([^\"]|\\\")*?)((?<!\\)\"))(\s*)(:)(((?<curlies>{{((?>[^{{}}]+)|(?&curlies))*}})|([^{{]))*?)(?=}}|,)",r"{\1,\7}"],
+		# not => !
+		[fr"(?<={separator})not(?=[\s(])\s*","!"], 
+		# Direct casts
+		[fr"(?<={separator})(\s*){builtin_type}\s*\(",fr"\2(\3)("], 
+		# Builtin constructors, like "Vector2()" => "new Vector2()"
+		[fr"(?<={separator})(?<!new\s+)(?P<A>\s*)(?P<B>{builtin_constructors})\s*\(",fr"\g<A>new \g<B>("],
+		# typeof(v) => v.GetType()
+		[fr"(?<={separator}\s*)typeof\s*{match_braces}",r"\2.GetType()"], 
+		# TODO : Don't affect strings and comments
+		[r"(?<=\s)and(?=\s)","&&"], 
+		[r"(?<=\s)or(?=\s)","||"],
+		# [fr"{cterm}\s+in\s+{cterm}",fr""] # Ignore "in" operator for now due to complicated operator binding situation.
+		# Turn all remaining A : B into automatic array pairs {A,B} , presumably part of dictionary initiation.
+		[fr"(?<! \/\/.*)(\"(([^\"]|\\\")*?)((?<!\\)\"))(\s*)(:)(((?<curlies>{{((?>[^{{}}]+)|(?&curlies))*}})|([^{{]))*?)(?=}}|,)",r"{\1,\7}"],
 
 
-	## SWITCH/CASE
+		## SWITCH/CASE
 
-	# Multistep. Match iteratively on previous match only. Last match is used with replacement regex. Then all pieces are merged back together again. This is me surrendering to the almighty switch/case pattern, which I just can't manage to squeeze into a single regex replacement line. I know possessive quantifiers should be able to help here, but the effort is just not worth it since I don't have a testing tool that supports those
-	[[fr"^([ \t]*)match[ \t]+(.*)[ \t]*:.*\n({comment_or_empty}|\1[ \t]+.*\n)*",fr"^([ \t]*)(?!case)(({valid_term}(\s*,\s*{valid_term})*)[ \t]*:(.*)\n({comment_or_empty}|\1[ \t]+.*\n)*)"],fr"\1case \2\1\tbreak;\n"], 
-	 # Continue switch case : turn match to switch and surround with curlies.
-	[fr"^(?P<A>[ \t]*)match(?P<B>[ \t]+{valid_term}[ \t]*):(?P<C>[ \t]*(\/\/.*)*\n)(?P<D>({comment_or_empty}|\1[ \t]+.*\n)*)",fr"\g<A>switch(\g<B>)\g<C>\g<A>{{\n\g<D>\g<A>}}\n"],
-	# C# Doesn't support multiple cases in one line, so split them
-	[fr"^(?P<A>\s+)case\s+(?P<B>{valid_term})\s*,\s*(?P<C>({valid_term},)*{valid_term})\s*:",fr"\g<A>case \g<B>:\n\g<A>case \g<C>:"], 
+		# Multistep. Match iteratively on previous match only. Last match is used with replacement regex. Then all pieces are merged back together again. This is me surrendering to the almighty switch/case pattern, which I just can't manage to squeeze into a single regex replacement line. I know possessive quantifiers should be able to help here, but the effort is just not worth it since I don't have a testing tool that supports those
+		[[fr"^([ \t]*)match[ \t]+(.*)[ \t]*:.*\n({comment_or_empty}|\1[ \t]+.*\n)*",fr"^([ \t]*)(?!case)(({valid_term}(\s*,\s*{valid_term})*)[ \t]*:(.*)\n({comment_or_empty}|\1[ \t]+.*\n)*)"],fr"\1case \2\1\tbreak;\n"], 
+		# Continue switch case : turn match to switch and surround with curlies.
+		[fr"^(?P<A>[ \t]*)match(?P<B>[ \t]+{valid_term}[ \t]*):(?P<C>[ \t]*(\/\/.*)*\n)(?P<D>({comment_or_empty}|\1[ \t]+.*\n)*)",fr"\g<A>switch(\g<B>)\g<C>\g<A>{{\n\g<D>\g<A>}}\n"],
+		# C# Doesn't support multiple cases in one line, so split them
+		[fr"^(?P<A>\s+)case\s+(?P<B>{valid_term})\s*,\s*(?P<C>({valid_term},)*{valid_term})\s*:",fr"\g<A>case \g<B>:\n\g<A>case \g<C>:"], 
 
-	## SEMICOLONS
+		## SEMICOLONS
 
-	# semicolon at end of standalone terms (such as function calls) (but never after values like new T() or {valid_value})
-	[fr"(?<![,]\s*)(?<=^[ \t]*)(?!{reserved_keywords}\s*\(*)(?P<Content>{valid_term_c}[ \t]*)(?P<Comment>{match_eol})(?!\s*[{{[(])",fr"\g<Content>;\g<Comment>"], 
-	# semicolon at end of assignments
-	[fr"((?<=^[ \t]*|((var|const|public|private|static|async|delegate|{match_brackets})[ \t])*)({valid_name} )?{valid_term}[\t ]*[\+\-]?=[\t ]*{valid_term}[ \t]*)(?P<E>{match_eol})(?!\s*[{{(])",fr"\1;\g<E>"], 
-	# return statements TODO : May be surrounded by braces or curlies, which will not count as ^ or $ 
-	[fr"^(?P<A>[ \t]*return([\t ]*{valid_term})?)(?P<B>{match_eol})",fr"\g<A>;\g<B>"], 
+		# semicolon at end of standalone terms (such as function calls) (but never after values like new T() or {valid_value})
+		[fr"(?<![,]\s*)(?<=^[ \t]*)(?!{reserved_keywords}\s*\(*)(?P<Content>{valid_term_c}[ \t]*)(?P<Comment>{match_eol})(?!\s*[{{[(])",fr"\g<Content>;\g<Comment>"], 
+		# semicolon at end of assignments
+		[fr"((?<=^[ \t]*|((var|const|public|private|static|async|delegate|{match_brackets})[ \t])*)({valid_name} )?{valid_term}[\t ]*[\+\-]?=[\t ]*{valid_term}[ \t]*)(?P<E>{match_eol})(?!\s*[{{(])",fr"\1;\g<E>"], 
+		# return statements TODO : May be surrounded by braces or curlies, which will not count as ^ or $ 
+		[fr"^(?P<A>[ \t]*return([\t ]*{valid_term})?)(?P<B>{match_eol})",fr"\g<A>;\g<B>"], 
 
-	## Cleanup
+		## Cleanup
 
-	# .functionCall() => base.functionCall()
-	[fr"(?<=[\n;][ \t])(?=\.{valid_name}[\t ]*\()",fr"base"],
-	{ # Any class field (~variable declaration outside of function bodies) must have a well defined type. Replace var with __TYPE__ to notify user this needs to be defined manually.
-		"inverted":True,
-		"match":match_full_function_cs,
-		"replacement":[fr"(?<={separator}[\t ]*)var(?=[\t ]+{valid_name}[\t ]+=)",fr"__TYPE__"],
-	},
-	# Strip "pass", which is replaced already by (maybe empty) curlies.
-	[fr"^[\t ]*pass[\t ]*;*[\t ]*\n",""], 
-	
-	# Replace constants (multiple different names that follow clear patterns)
-	{
-		"match":fr"(?<={separator})PROPERTY_USAGE_([A-Z]*_?)*", # PROPERTY_USAGE_*
-		"children":[
-			{
-				"match":fr"(?<=PROPERTY_USAGE_).*", # First turn to PascalCase
-				"replacement_f":lambda t: regex.subf(fr"[A-Z]+",lambda s: to_pascal(s.group(0)),t,0,flags),
-			},
-			{ # Then strip spaces
-				"replacement":["_",""],
-			}
-		],
-		"replacement":[
-			fr"PROPERTYUSAGE(?P<Name>.*)",
-			fr"Godot.PropertyUsageFlags.\g<Name>"
-		]
-	}
+		# .functionCall() => base.functionCall()
+		[fr"(?<=[\n;][ \t])(?=\.{valid_name}[\t ]*\()",fr"base"],
+		{ # Any class field (~variable declaration outside of function bodies) must have a well defined type. Replace var with __TYPE__ to notify user this needs to be defined manually.
+			"inverted":True,
+			"match":match_full_function_cs,
+			"replacement":[fr"(?<={separator}[\t ]*)var(?=[\t ]+{valid_name}[\t ]+=)",fr"__TYPE__"],
+		},
+		# Strip "pass", which is replaced already by (maybe empty) curlies.
+		[fr"^[\t ]*pass[\t ]*;*[\t ]*\n",""], 
+		
+		# Replace constants (multiple different names that follow clear patterns)
+		{
+			"match":fr"(?<={separator})PROPERTY_USAGE_([A-Z]*_?)*", # PROPERTY_USAGE_*
+			"children":[
+				{
+					"match":fr"(?<=PROPERTY_USAGE_).*", # First turn to PascalCase
+					"replacement_f":lambda t: regex.subf(fr"[A-Z]+",lambda s: to_pascal(s.group(0)),t,0,flags),
+				},
+				{ # Then strip spaces
+					"replacement":["_",""],
+				}
+			],
+			"replacement":[
+				fr"PROPERTYUSAGE(?P<Name>.*)",
+				fr"Godot.PropertyUsageFlags.\g<Name>"
+			]
+		},
+
+		{ # Turn multiline strings into string additions
+			"repeat":False,
+			"match":fr"(?<!(#|//).*)(\"([^\"]|\\\")*?(?<!\\)\")", # In C# common strings can't be multiline. But the previous regex can produce them. In that case, we match all  strings, including these "bad" strings here
+			"children":[
+				{
+					"repeat":False,
+					"replacement":[fr"\n",r'\\n"+\n"'],# Split on linebreak
+				}
+			],
+			"replacement_f": lambda v: print(v) or v
+			
+		},
+	]
+}
 		
 	
 
@@ -537,11 +578,11 @@ def _object_replace_child_call(v,obj):
 		obj['children'] = []
 
 	for child in obj['children'] : 
-		v = object_replace(child,v); 
+		v = _try_replace(v,child); 
 
 
 	if 'replacement' in obj:
-		v = _try_replace(v,obj['replacement']);
+		v = _try_replace(v,obj['replacement'],obj.get('repeat',True));
 
 
 	if 'replacement_f' in obj:
@@ -607,7 +648,10 @@ def array_replace(matches,replacement,text,depth=0):
 		return result;
 	
 
-def _try_replace(text,replacer):
+def _try_replace(text,replacer,repeat = None):
+	if repeat == None:
+		repeat = not "repeat" in replacer or replacer["repeat"]
+
 	orig_text = text;
 	while True:
 		prev_text = text
@@ -632,6 +676,10 @@ def _try_replace(text,replacer):
 			else:
 				print("ERROR")
 
+		if not repeat:
+			#print('break repeat')
+			break;
+		#print('continue ', repeat, replacer);
 		if text == prev_text: # Repeatedly apply same operation until no more changes occur.
 				break;
 		if len(text) > (len(orig_text) * 10 + 1000):
