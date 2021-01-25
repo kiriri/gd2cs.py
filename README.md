@@ -9,7 +9,7 @@ It analyzes syntax only. No fancy code analysis.
 <b>Make sure to back-up all your files. No warranty of any kind is given. The author of this script cannot be held liable for any damage it may cause. <br><br>Use at your own risk.</b> <br><br>
 Known issues :<br>
 \- Keywords in strings or comments may be replaced<br>
-\- Nested Dictionaries generate excessive/invalid semicolons<br>
+\- Ternary operators such as A?B:C are too expensive to parse correctly and are therefore ignored in some transformations.
 <br>
 Usage : <br>specify the input gd file via -f "\*" and the target output file via -o "\*" . <br>
 Use -t * to specify the number of spaces in a tab (default = 4). This will replace consecutive spaces with tabs so the regex patterns can match a mix of space-offsets and tab-offsets (eg "else:\n&nbsp;&nbsp;&nbsp;&nbsp;pass" will become "else:\n\tpass").<br>
@@ -18,7 +18,7 @@ Example :<br>
 python3 gd2cs.py/gd2cs.py -i "Test_Script_Godot.gd" -o "Output/TestScript.cs"<br>
 <br>
 Example Code Conversion (apr. real life example. Intentionally formatted badly to show where the converter will fail) :<br>
-```python
+```GDScript
 tool
 extends Node
 
@@ -111,13 +111,13 @@ public class GameDataTest2 : Node
 	float G {get{return getterA();} set{setterA(value);}}
 	float DEF = -0.1f ;// Step
 	
-	var f = (4+6/12).GetType();
+	__TYPE__ f = (4+6/12).GetType();
 	
 	[Signal] delegate void a();
 	[Signal] delegate void b(int a,Type b);
 	
 	
-	// Default Data (I recommend splitting this kind of stuff into separate json files in c#)
+	// "Default" 'Data' (I recommend splitting this kind of stuff into separate json files in c#)
 	static readonly Dictionary _default_data = new Dictionary(){
 		{"t", 100},
 		{"r", "asfgh"},
@@ -138,7 +138,7 @@ public class GameDataTest2 : Node
 	
 	}
 	
-	public  ready()
+	public __TYPE__ ready()
 	{  
 		var s = GD.Range(Mathf.Abs(-1),GD.Randi());
 		
@@ -162,7 +162,7 @@ public class GameDataTest2 : Node
 	// Do stuff
 	}
 	
-	public bool r(T value,bool val=false,s)
+	public bool r(T value,bool val=false,__TYPE__ s)
 	{  
 		if(value == null)
 			 return !true;
@@ -200,5 +200,6 @@ As you can see, it's not perfect and it will require you to manually fix the for
 
 <br>
 TODO:<br>
-- ignore Comments and Strings<br>
+- ignore Comments and Strings (partially done)<br>
+- Optional automatic PascalCase conversion on all non-static variables
 - process entire folders (recursively)<br>
