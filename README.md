@@ -9,7 +9,7 @@ It analyzes syntax only. No fancy code analysis.
 <b>Make sure to back-up all your files. No warranty of any kind is given. The author of this script cannot be held liable for any damage it may cause. <br><br>Use at your own risk.</b> <br><br>
 Known issues :<br>
 \- Keywords in strings or comments may be replaced<br>
-\- Ternary operators such as A?B:C are too expensive to parse correctly and are therefore ignored in some transformations.
+\- Ternary operators such as A?B:C are too expensive to parse correctly and are therefore ignored in some transformations.<br>
 <br>
 Usage : <br>specify the input gd file via -f "\*" and the target output file via -o "\*" . <br>
 Use -t * to specify the number of spaces in a tab (default = 4). This will replace consecutive spaces with tabs so the regex patterns can match a mix of space-offsets and tab-offsets (eg "else:\n&nbsp;&nbsp;&nbsp;&nbsp;pass" will become "else:\n\tpass").<br>
@@ -36,11 +36,15 @@ var f = typeof(4+6/12)
 signal a()
 signal b(a:int,b:Type)
 
+var string_test_1 = 'an "Elephant"'
+var string_test_2 = 'an
+ \'Elephantos\''
 
-# Default Data (I recommend splitting this kind of stuff into separate json files in c#)
+# "Default" 'Data' (I recommend splitting this kind of stuff into separate json files in c#)
 const _default_data = {
 	"t" : 100,
-	"r" : 'asfgh',
+	"r
+	afg" : 'asfgh',
 	"u" : false,# Example Comment
 	"r":["a",{"b":false}],
 	"t":{"e":{"g":1,"f":2},},
@@ -56,6 +60,8 @@ func getterA()->float:
 func ready():
 	var s = range(abs(-1),randi())
 	
+	.ready();
+
     if ABC: # Comment
         assert(false)
     elif false:
@@ -116,11 +122,15 @@ public class GameDataTest2 : Node
 	[Signal] delegate void a();
 	[Signal] delegate void b(int a,Type b);
 	
+	string string_test_1 = "an \"Elephant\"";
+	__TYPE__ string_test_2 = "an\n"+
+	" \'Elephantos\'"
 	
 	// "Default" 'Data' (I recommend splitting this kind of stuff into separate json files in c#)
 	static readonly Dictionary _default_data = new Dictionary(){
 		{"t", 100},
-		{"r", "asfgh"},
+		{"r\n"+
+	"	afg", "asfgh"},
 		{"u", false},// Example Comment
 		{"r",new Array(){"a",new Dictionary(){{"b",false}}}},
 		{"t",new Dictionary(){{"e",new Dictionary(){{"g",1},{"f",2}}},}},
@@ -142,6 +152,8 @@ public class GameDataTest2 : Node
 	{  
 		var s = GD.Range(Mathf.Abs(-1),GD.Randi());
 		
+		base.ready();
+	
 		if(ABC) // Comment
 		{
 			System.Diagnostics.Debug.Assert(false);
@@ -201,5 +213,5 @@ As you can see, it's not perfect and it will require you to manually fix the for
 <br>
 TODO:<br>
 - ignore Comments and Strings (partially done)<br>
-- Optional automatic PascalCase conversion on all non-static variables
+- Optional automatic PascalCase conversion on all non-static variables<br>
 - process entire folders (recursively)<br>
