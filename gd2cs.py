@@ -33,14 +33,12 @@ except ImportError:
 # Nested Dictionaries generate excessive/invalid semicolons
 
 # TODO : parent calls .X => base.X
-# TODO : Replace missing types with __TYPE__ : Still missing var X fields and func(... defs)
 # TODO : Multiline strings
 # TODO : Rename {Builtin_Class}.aa_bb_cc to AaBbCc (Eg Engine.is_editor_hint)
 # TODO : unnamed enums
 # TODO : Mark variables public (unless name starts with _)
 # TODO : Optionally rename fields
 # TODO : If extend Node, convert all Node function to capitalized forms
-# TODO : Fix Comments in strings (don't convert!) (Use ?: to drop them?)
 # TODO : Process entire folders at once, recursively -r flag
 
 # Name of the file to be converted :
@@ -355,7 +353,8 @@ replacements = [
 
 	## Cleanup
 
-	
+	# .functionCall() => base.functionCall()
+	[fr"(?<=[\n;][ \t])(?=\.{valid_name}[\t ]*\()",fr"base"],
 	{ # Any class field (~variable declaration outside of function bodies) must have a well defined type. Replace var with __TYPE__ to notify user this needs to be defined manually.
 		"inverted":True,
 		"match":match_full_function_cs,
