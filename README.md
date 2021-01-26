@@ -211,7 +211,16 @@ public class GameDataTest2 : Node
 As you can see, it's not perfect and it will require you to manually fix the formatting and some underivable type definitions afterwards. But it should save you hundreds of hours on your code conversions. If it does save you time, please consider leaving a donation. It'll flow right back into making this project even better.
 
 <br>
-TODO:<br>
-- ignore Comments and Strings (partially done)<br>
-- Optional automatic PascalCase conversion on all non-static variables<br>
-- process entire folders (recursively)<br>
+
+What's next :<br>
+
+Smarter Analysis :<br> 
+
+\- Project-wide class analysis : Scan existing gd and cs scripts, extract classes, methods, fields, and use data to more accurately rename, to automatically load scripts, to infer function return types, etc <br>
+
+\- Optional automatic PascalCase conversion on all non-static variables<br>
+
+\- process entire folders (recursively)<br>
+<br>
+
+But before that the focus will be on polishing existing features, increasing performance and publishing it on the Godot Asset Store.<br>
