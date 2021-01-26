@@ -81,7 +81,8 @@ separator = fr"([{{}}\[\]\s,:;=()])"
 comment_or_empty = "((^\s*\n)|(^\s*\/\/.*\n))"
 rpc = fr"(remote|master|puppet|remotesync|mastersync|puppetsync)";
 access_modifiers = fr"(public|private|protected)"
-func_prefix = fr"({rpc}|{access_modifiers}|virtual|override|static|async)" # Most of these are c#
+field_prefix = fr"({access_modifiers}|override|static|const|readonly)"
+func_prefix = fr"({rpc}|{access_modifiers}|virtual|override|static|async|const|readonly)" # Most of these are c#
 reserved_keywords = fr"(public|static|var|const|foreach|for|while|if|else|switch|case|return|using|new)"
 valid_name = fr"([_a-zA-Z]+[_\-a-zA-Z0-9]*(?<!{reserved_keywords}))" 
 match_curlies = fr"(?<curlies>{{((?>[^{{}}]+)|(?&curlies))*}})" # Named group recursion on curled braces
@@ -251,7 +252,7 @@ replacements = [
 					"repeat":False,
 					# replace function declarations, if possible use return type, otherwise leave blank
 					"replacement":[match_full_function_gd,r"\1public \g<R_Type> \g<Name>\g<Params>\n\1{\1  \g<Comments>\n\g<Content>\1}\n\n"],
-					"replacement_f":lambda v: print("\n-------\n"+v) or v
+					#"replacement_f":lambda v: print("\n-------\n"+v) or v
 				},
 				{
 					"repeat":False,
@@ -392,10 +393,15 @@ replacements = [
 
 		# .functionCall() => base.functionCall()
 		[fr"(?<=[\n;][ \t])(?=\.{valid_name}[\t ]*\()",fr"base"],
-		{ # Any class field (~variable declaration outside of function bodies) must have a well defined type. Replace var with __TYPE__ to notify user this needs to be defined manually.
+		{ # Any class field (~variable declaration outside of function bodies) 
 			"inverted":True,
 			"match":match_full_function_cs,
-			"replacement":[fr"(?<={separator}[\t ]*)var(?=[\t ]+{valid_name}[\t ]+=)",fr"__TYPE__"],
+			"children":[
+				[fr"(?<={separator}[\t ]*)var(?=[\t ]+{valid_name}[\t ]+=)",fr"__TYPE__"], # must have a well defined type. Replace var with __TYPE__ to notify user this needs to be defined manually.
+				[fr"(?<=[\n;][\t ]*)(?!.*{access_modifiers})(?=({field_prefix}[\t ]*)*{full_name}[\t ]+[a-zA-Z]{valid_name}?[\t ]+=)","public "],
+				[fr"(?<=[\n;][\t ]*)(?!.*{access_modifiers})(?=({field_prefix}[\t ]*)*{full_name}[\t ]+{valid_name}[\t ]+=)","private "], # Private if it starts with _ or other weird character
+
+			]
 		},
 		# Strip "pass", which is replaced already by (maybe empty) curlies.
 		[fr"^[\t ]*pass[\t ]*;*[\t ]*\n",""], 
@@ -427,7 +433,7 @@ replacements = [
 					"replacement":[fr"\n",r'\\n"+\n"'],# Split on linebreak
 				}
 			],
-			"replacement_f": lambda v: print(v) or v
+			#"replacement_f": lambda v: print(v) or v
 			
 		},
 	]
