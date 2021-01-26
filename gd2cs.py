@@ -120,11 +120,11 @@ match_eol = fr"(?<eol>({match_comments_old}|{match_comments_new}|[\t ])*?$)" # R
 
 
 # FINAL lexical words (These provide fixed named output groups and therefore should not be used elsewhere)
-match_full_function_gd = fr"(?P<A>[\t ]*)func[\t ]+(?P<Name>{valid_name})[\t ]*(?P<Params>{match_braces})([\t ]*->[\t ]*(?P<R_Type>.*))*[ \t]*:(?P<Comments>.*)\n(?P<Content>((\1[\t ]+.*\n)|{comment_or_empty})*)"
-match_full_function_cs = fr"(?P<A>[\t ]*)({access_modifiers}[\t ]+)+(?P<R_Type>\S*)[\t ]+(?P<Name>{valid_name})[\t ]*(?P<Params>{match_braces})[\t ]*(?P<Comments>.*)\s*(?P<Content>{match_curlies})"
+match_full_function_gd = fr"(?P<A>[\t ]*)({func_prefix}[\t ]+)*func[\t ]+(?P<Name>{valid_name})[\t ]*(?P<Params>{match_braces})([\t ]*->[\t ]*(?P<R_Type>.*))*[ \t]*:(?P<Comments>.*)\n(?P<Content>((\1[\t ]+.*(\n|{eof}))|{comment_or_empty})*)"
+match_full_function_cs = fr"(?P<A>[\t ]*)({func_prefix}[\t ]+)*({access_modifiers}[\t ]+)+(?P<R_Type>\S*)[\t ]+(?P<Name>{valid_name})[\t ]*(?P<Params>{match_braces})[\t ]*(?P<Comments>.*)\s*(?P<Content>{match_curlies})"
 match_type_hinting = fr"(?<!\/\/.*)(?<={valid_name}[\t ]*\( *.*)(?P<Name>{valid_name})[\t ]*:[\t ]*(?P<Type>{valid_name})"
-match_function_arguments = fr"(?<=^\s*{access_modifiers}+[\t ]+({valid_name}[\t ]+)?{valid_name}[\t ]*){match_braces}"
-match_function_header = fr"(?<=^\s*)(?P<AccessModifiers>{access_modifiers}+)[\t ]+((?P<Type>{valid_name})[\t ]+)?(?P<Name>{valid_name})[\t ]*(?P<Args>{match_braces})"
+match_function_arguments = fr"(?<=^\s*({func_prefix}[\t ]+)*{access_modifiers}+[\t ]+({valid_name}[\t ]+)?{valid_name}[\t ]*){match_braces}"
+match_function_header = fr"(?<=^\s*)(?P<AccessModifiers>({func_prefix}[\t ]+)*{access_modifiers}+)[\t ]+((?P<Type>{valid_name})[\t ]+)?(?P<Name>{valid_name})[\t ]*(?P<Args>{match_braces})"
 
 # Default imports and aliases that almost every class needs.
 header = """
@@ -180,6 +180,7 @@ replacements = [
 		# Clean up directives that are manually applied after regex replacements
 		[fr"^\s*tool\s*$"," "], 
 		[fr"^\s*extends\s*.*\s*$"," "],
+		[fr"^\s*class_name\s*.*\s*$"," "], # Class Name is ignored entirely. C# Classes must be named like the file they are in.
 		# Turn lowest level unprocessed dictionaries. KV pairs are still of form K:V though
 		[fr"(?<!(new Dictionary\(\)|new Array\(\)))(?<=([:,={{[(]|return\s+))(?P<W>{match_eol}*\s*)(?P<C>{match_curlies})",r"\g<W>new Dictionary()\g<C>"], 
 		# Same for array
@@ -242,7 +243,8 @@ replacements = [
 				{
 					"repeat":False,
 					# replace function declarations, if possible use return type, otherwise leave blank
-					"replacement":[match_full_function_gd,r"\1public \g<R_Type> \g<Name>\g<Params>\n\1{\1  \g<Comments>\n\g<Content>\1}\n\n"]
+					"replacement":[match_full_function_gd,r"\1public \g<R_Type> \g<Name>\g<Params>\n\1{\1  \g<Comments>\n\g<Content>\1}\n\n"],
+					"replacement_f":lambda v: print("\n-------\n"+v) or v
 				},
 				{
 					"repeat":False,
@@ -288,7 +290,6 @@ replacements = [
 					"children":[
 						{
 							"replacement":[fr"(?<=(^|\s)({func_prefix})+)[\t ]*(?=[\t ]*{valid_name}[ \t]*\()",fr" void "],
-							"replacement_f":lambda v: (print("\n-------\n"+v) if '_trigger_all_hooks' in v else False) or v
 						}
 					],
 					
@@ -299,6 +300,7 @@ replacements = [
 					#"replacement_f":lambda v: v
 				}
 			],
+			
 		},
 
 		## If/Else
@@ -316,24 +318,26 @@ replacements = [
 
 		## Variable Declarations
 
+		# Remove trailing colon if it didnt have an explicit type
+		[fr"(?<=(\s|^)var\s+{valid_name}\s*):(?=\s*=)",fr" "], 
 		# Variable definitions, if they have a valid type
 		[fr"var[\t ]+(?P<Name>{valid_name})[\t ]*:[\t ]*(?P<Type>{valid_name})",r"\g<Type> \g<Name>"], 
 		# Signals
 		[fr"(?<={separator})signal(?P<R>\s+{valid_name}\s*{match_braces})[\t ]*\;*(?={match_eol})",fr"[Signal] delegate void\g<R>;"],
 		# Unidentifiable variables const var
-		[fr"(?<={separator}const\s+)(?={valid_name}\s*=)",r"var "], 
+		[fr"(?<={separator}const\s+)(?={valid_name}\s*:?\s*=)",r"var "], 
 		# Auto identify variables from export hints
 		[fr"(?<={separator})export\s*\(\s*(?P<T>{valid_term})\s*(,\s*(?P<A>.*?)?)\s*\)\s*(?P<B>(const\s+)?)var(?=\s+{valid_name}\s*=)",fr"[Export(\g<A>)] \g<B> \g<T>"],
 		# Auto identify bools. TODO : Also accept simple static terms such as 5*5, !true, "a" in ["a","b","c"]
-		[fr"(?<={separator})var(?=\s+{valid_name}\s*=\s*{valid_bool}(.*))",r"bool"],
+		[fr"(?<={separator})var(?=\s+{valid_name}\s*:?\s*=\s*{valid_bool}(.*))",r"bool"],
 		# Auto identify float
-		[fr"(?<={separator})var(?P<A>\s+{valid_name}\s*=\s*{valid_float})",r"float\g<A>f"],  
+		[fr"(?<={separator})var(?P<A>\s+{valid_name}\s*:?\s*=\s*{valid_float})",r"float\g<A>f"],  
 		# Auto identify integers. 
-		[fr"(?<={separator})var(?=\s+{valid_name}\s*=\s*{valid_int}(.*))",r"int"], 
+		[fr"(?<={separator})var(?P<A>\s+{valid_name}\s*:?\s*=\s*{valid_int}(.*))",r"int"], 
 		# Auto identify string
-		[fr"(?<={separator})var(?=\s+{valid_name}\s*=\s*{valid_string}(.*))",r"string"], 
+		[fr"(?<={separator})var(?P<A>\s+{valid_name}\s*:?\s*=\s*{valid_string}(.*))",r"string"], 
 		# Auto identify Object
-		[fr"(?<=\s|^)var\s+(?P<A>{valid_name})(?=\s*=\s*new\s+(?P<B>{full_name})(.*))",fr"\g<B> \g<A>"], 
+		[fr"(?<=\s|^)var\s+(?P<A>{valid_name})(?=\s*:?\s*=\s*new\s+(?P<B>{full_name})(.*))",fr"\g<B> \g<A>"], 
 		# const => static readonly unless value is struct
 		[fr"const[\t ]+(?!{builtin_type}[\t ])(?={valid_name}[\t ]+{valid_name}[\t ]+=)",fr"static readonly "],
 		# setget
