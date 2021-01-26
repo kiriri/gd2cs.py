@@ -32,6 +32,7 @@ except ImportError:
 # Keywords in strings or comments may be replaced
 # Nested Dictionaries generate excessive/invalid semicolons
 
+# TODO : Turn all final regex into lexical words
 # TODO : Rename {Builtin_Class}.aa_bb_cc to AaBbCc (Eg Engine.is_editor_hint)
 # TODO : unnamed enums
 # TODO : Mark variables public (unless name starts with _)
@@ -75,13 +76,13 @@ match_irrelevant = "((^\s*\n)|(\/\/.*\n))" # Irrelevant c#
 
 any_char = "[\w\W]"
 t0 = fr"(?<!\n)^" # start of input ( Should be \A if that token exists )
-eof = fr"\z" # end of input
+eof = fr"(?!\n)$" # end of input \z
 separator = fr"([{{}}\[\]\s,:;=()])"
 comment_or_empty = "((^\s*\n)|(^\s*\/\/.*\n))"
 rpc = fr"(remote|master|puppet|remotesync|mastersync|puppetsync)";
 access_modifiers = fr"(public|private|protected)"
 func_prefix = fr"({rpc}|{access_modifiers}|virtual|override|static|async)" # Most of these are c#
-reserved_keywords = fr"(public|static|var|const|foreach|for|if|else|switch|case|return|using|new)"
+reserved_keywords = fr"(public|static|var|const|foreach|for|while|if|else|switch|case|return|using|new)"
 valid_name = fr"([_a-zA-Z]+[_\-a-zA-Z0-9]*(?<!{reserved_keywords}))" 
 match_curlies = fr"(?<curlies>{{((?>[^{{}}]+)|(?&curlies))*}})" # Named group recursion on curled braces
 match_braces = fr"(?<braces>\(((?>[^()]+)|(?&braces))*\))"
@@ -174,7 +175,11 @@ replacements = [
 	"match": fr"[\w\W]*",
 	"children":
 	[
-
+		# Add an empty line at the end of the document so the {} formatting turns out prettier if there is no empty line there already
+		{
+			"repeat":False,
+			"replacement":[fr"{eof}","\n"],
+		},
 		# Replace spaces at beginning of line with tabs where applicable (Required for offset/scope matching)
 		[fr"(?<=^\t*)" + fr" "*strip_tabs,fr"\t"],
 		# Clean up directives that are manually applied after regex replacements
@@ -227,7 +232,9 @@ replacements = [
 		# Variant is System.Object in C#
 		[fr"(?<={separator})Variant(?={separator})",fr"System.Object"],
 		# For loops
-		[fr"(?<=\n)([\t ]*)for[ ]+(.*)(->(.*))*:(.*)\n(((\1[\t ]+.*\n)|{comment_or_empty})*)",r"\1foreach(var \2)\5\n\1{\n\6\1}\n"], 
+		[fr"(?<=\n)([\t ]*)for[\t ]+(.*)(->(.*))*:(.*)\n(((\1[\t ]+.*\n)|{comment_or_empty})*)",r"\1foreach(var \2)\5\n\1{\n\6\1}\n"], 
+		# While loops
+		[fr"(?<=\n)([\t ]*)while[\t ]+(?P<Condition>.*):(?P<B>(.*)\n)(?P<Content>((\1[\t ]+.*(\n|{eof}))|{comment_or_empty})*)",r"\1while(\g<Condition>)\g<B>\1{\n\g<Content>\1}\n"], 
 		
 		
 		# "a:B" to "B a" ; Both in function calls and definitions as well as field declarations etc
@@ -306,13 +313,13 @@ replacements = [
 		## If/Else
 		
 		# replace if/elif blocks 
-		[fr"^(?P<A>[ \t]*)(?P<B>if|elif)(?=[\t \(])[\t ]*(?P<C>({valid_term}){{1,1}})[ \t]*:(?P<Comment>{match_eol})(?P<E>\n({comment_or_empty}*(\1[\t ]+.*\n)*)*)",r"\g<A>\g<B>(\g<C>)\g<Comment>\n\g<A>{\g<E>\g<A>}\n"], 
+		[fr"^(?P<A>[ \t]*)(?P<B>if|elif)(?=[\t \(])[\t ]*(?P<C>({valid_term}){{1,1}})[ \t]*:(?P<Comment>{match_eol})(?P<E>\n({comment_or_empty}*(\1[\t ]+.*(\n|{eof}))*)*)",r"\g<A>\g<B>(\g<C>)\g<Comment>\n\g<A>{\g<E>\g<A>}\n"], 
 		# single line if/else : * (This must not capture subsequent indendented lines)
 		[fr"^(?P<A>[ \t]*)(?P<B>if|elif)(?=[\t \(])[\t ]*(?P<C>({valid_term}){{1,1}})[ \t]*:(?P<D>[^\n]*?)(?P<Comment>{match_eol})",r"\g<A>\g<B>(\g<C>)\g<Comment>\n\g<A>\t\g<D>"], 
 		# elif
 		[fr"(?<={separator})elif(?={separator})","else if"],
 		# replace else
-		[fr"^(?P<A>[ \t]*)(?P<B>else)[\t ]*:(?P<D>[^\n]*)\n(?P<E>((\1[\t ]+.*(\n|$)|{comment_or_empty})*))",r"\g<A>\g<B>\g<D>\n\g<A>{\n\g<E>\g<A>}\n"],
+		[fr"^(?P<A>[ \t]*)(?P<B>else)[\t ]*:(?P<D>[^\n]*)\n(?P<E>((\1[\t ]+.*(\n|{eof})|{comment_or_empty})*))",r"\g<A>\g<B>\g<D>\n\g<A>{\n\g<E>\g<A>}\n"],
 		# inline if else
 		[fr"((?=[^\n]*[\t ]+if[ \t]+[^\n]+[ \t]+else[ \t]+[^\n]+)(?P<A>{valid_term})[ \t]+if[ \t]+(?P<B>{valid_term})[ \t]+else[ \t]+(?P<C>{valid_term}))",fr"\g<B> ? \g<A> : \g<C>"],
 
@@ -333,9 +340,9 @@ replacements = [
 		# Auto identify float
 		[fr"(?<={separator})var(?P<A>\s+{valid_name}\s*:?\s*=\s*{valid_float})",r"float\g<A>f"],  
 		# Auto identify integers. 
-		[fr"(?<={separator})var(?P<A>\s+{valid_name}\s*:?\s*=\s*{valid_int}(.*))",r"int"], 
+		[fr"(?<={separator})var(?=\s+{valid_name}\s*:?\s*=\s*{valid_int}(.*))",r"int"], 
 		# Auto identify string
-		[fr"(?<={separator})var(?P<A>\s+{valid_name}\s*:?\s*=\s*{valid_string}(.*))",r"string"], 
+		[fr"(?<={separator})var(?=\s+{valid_name}\s*:?\s*=\s*{valid_string}(.*))",r"string"], 
 		# Auto identify Object
 		[fr"(?<=\s|^)var\s+(?P<A>{valid_name})(?=\s*:?\s*=\s*new\s+(?P<B>{full_name})(.*))",fr"\g<B> \g<A>"], 
 		# const => static readonly unless value is struct
