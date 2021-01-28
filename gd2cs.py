@@ -247,7 +247,7 @@ replacements = [
 				}
 			],
 			"replacement":[fr"(?<=^@?)'([\w\W]*)'$",fr'"\1"'], # Single quote to double quote since in c# single quotes denote chars
-			"replacement_f":lambda f : print(f) or f
+			#"replacement_f":lambda f : print(f) or f
 			
 		},
 		# Anything not in a string
