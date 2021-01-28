@@ -15,33 +15,6 @@ import sys
 import subprocess
 
 
-# regex module required, install if not already.
-try:
-  import regex
-except ImportError:
-	if click.confirm('This Script requires the regex package. Install?', default=True):
-		subprocess.check_call([sys.executable,"-m","pip","install","regex"])
-	else:
-		quit()
-try:
-	import regex
-except ImportError:
-	print('Failed to install regex package. Try to do so manually. The command should look somewhat like\npython3 -m pip install regex\n')
-
-## KNOWN ISSUES
-# Keywords in strings or comments may be replaced
-# Nested Dictionaries generate excessive/invalid semicolons
-
-
-# TODO : Replace X.new(...) with new X(...)
-# TODO : 
-# TODO : Rename Functions => All defined in this class or any variable that is or instances any of these types https://docs.godotengine.org/en/3.2/classes/index.html
-# TODO : Rename Vars
-# TODO : Turn all final regex into lexical words
-# TODO : Rename {Builtin_Class}.aa_bb_cc to AaBbCc (Eg Engine.is_editor_hint)
-# TODO : unnamed enums
-# TODO : If extend Node, convert all Node function to capitalized forms
-# TODO : Process entire folders at once, recursively -r flag
 
 # Name of the file to be converted :
 filename = "Input.gd"
@@ -75,6 +48,39 @@ if not filename.endswith(".gd"):
 
 if not outname.endswith(".cs"):
 	outname = filename + ".cs"
+
+
+
+# regex module required, install if not already.
+try:
+  import regex
+except ImportError:
+	if click.confirm('This Script requires the regex package. Install?', default=True):
+		subprocess.check_call([sys.executable,"-m","pip","install","regex"])
+	else:
+		quit()
+try:
+	import regex
+except ImportError:
+	print('Failed to install regex package. Try to do so manually. The command should look somewhat like\npython3 -m pip install regex\n')
+
+## KNOWN ISSUES
+# Keywords in strings or comments may be replaced
+# Nested Dictionaries generate excessive/invalid semicolons
+
+
+# TODO : Replace X.new(...) with new X(...)
+# TODO : 
+# TODO : Rename Functions => All defined in this class or any variable that is or instances any of these types https://docs.godotengine.org/en/3.2/classes/index.html
+# TODO : Rename Vars
+# TODO : Turn all final regex into lexical words
+# TODO : Rename {Builtin_Class}.aa_bb_cc to AaBbCc (Eg Engine.is_editor_hint)
+# TODO : unnamed enums
+# TODO : If extend Node, convert all Node function to capitalized forms
+# TODO : Process entire folders at once, recursively -r flag
+
+
+
 
 
 # Define various regex "Words" (Lexical definitions we'll use in the more complex expressions lateron)

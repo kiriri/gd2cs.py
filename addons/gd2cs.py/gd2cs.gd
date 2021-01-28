@@ -130,18 +130,18 @@ func rename_all():
 
 # Check all common path aliases for the python executable. Prefer python3 over python2.
 func get_best_python_exec():
-	if false:
-		if ProjectSettings.has_setting("gd2cs/config/python"):
-			var exec = ProjectSettings.get_setting("gd2cs/config/python")
-			if not exec in ["null",""]:
-				return exec;
-		
-		var output = [];
-		var options = ["py","python3","python","python2"];
-		for option in options:
-			if OS.execute(option,["--version"],true,output) == 0:
-				ProjectSettings.set_setting("gd2cs/config/python",option)
-				return option
+
+	if ProjectSettings.has_setting("gd2cs/config/python"):
+		var exec = ProjectSettings.get_setting("gd2cs/config/python")
+		if not exec in ["null",""]:
+			return exec;
+	
+	var output = [];
+	var options = ["py","python3","python","python2"];
+	for option in options:
+		if OS.execute(option,["--version"],true,output) == 0:
+			ProjectSettings.set_setting("gd2cs/config/python",option)
+			return option
 	
 	print_to_console("No valid python install could be detected.",Color.red)
 	
