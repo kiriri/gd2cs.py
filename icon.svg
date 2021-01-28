@@ -140,13 +140,13 @@
     <text
        xml:space="preserve"
        id="text839"
-       style="font-style:normal;font-weight:normal;font-size:9.17222px;line-height:1.25;font-family:sans-serif;text-align:center;white-space:pre;shape-inside:url(#rect841);fill:#9cdcfe;fill-opacity:1;stroke:none"
-       transform="translate(-1.6480545,-17.804866)"
-       x="15.793865"
+       style="font-style:normal;font-weight:normal;font-size:9.17222px;line-height:1.25;font-family:sans-serif;text-align:start;white-space:pre;shape-inside:url(#rect841);fill:#9cdcfe;fill-opacity:1;stroke:none"
+       transform="translate(26.445181,-17.804866)"
+       x="7.4040145e-08"
        y="0"><tspan
-         x="64.680407"
+         x="36.078125"
          y="145.36527"><tspan
-           style="font-size:9.17222px;text-align:center;text-anchor:middle;fill:#4ec9b0;fill-opacity:1">out</tspan><tspan
-           style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:9.17222px;font-family:monospace;-inkscape-font-specification:monospace;text-align:center;text-anchor:middle;fill:#9cdcfe;fill-opacity:1"> cs</tspan></tspan></text>
+           style="font-size:9.17222px;text-align:start;text-anchor:start;fill:#4ec9b0;fill-opacity:1">out</tspan><tspan
+           style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:9.17222px;font-family:monospace;-inkscape-font-specification:monospace;text-align:start;text-anchor:start;fill:#9cdcfe;fill-opacity:1"> cs</tspan></tspan></text>
   </g>
 </svg>
