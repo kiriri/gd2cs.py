@@ -58,7 +58,7 @@ func do_conversion():
 		file[0] = remove_res.sub(file[0],"")
 		file[1] = remove_res.sub(file[1],"")
 		
-		var return_code = OS.execute(executable, ["addons/plugin/gd2cs.py","-i",file[0],"-o",file[1]],true,output)
+		var return_code = OS.execute(executable, ["addons/gd2cs.py/gd2cs.py","-i",file[0],"-o",file[1]],true,output)
 		if return_code != 0 : 
 			print_to_console("ERROR : Python exited with code " + str(return_code), Color.red)
 		for out in output:
@@ -99,10 +99,10 @@ func input_to_output(input:String)->String:
 
 # Prompt the user to select input files and create the matching ui elements once the files were submitted
 func add_input():
-	var result = yield(select_files(),"completed")
+	var result = yield(select_files(),"completed") 
 	var inputs_list = get_files_container()
 	for child in result:
-		var child_node : Node = load("res://addons/plugin/scenes/FileElement.tscn").instance()
+		var child_node : Node = load("res://addons/gd2cs.py/scenes/FileElement.tscn").instance()
 		child_node.find_node("Input").text = child
 		child_node.find_node("Output").text = input_to_output(child)
 		#child_node.find_node("RemoveButton").connect("button_up",self,"remove_input",[child_node])
@@ -110,7 +110,7 @@ func add_input():
 		
 func add_rename_rule():
 	var rename_list = get_regex_container();
-	var child_node : Node = load("res://addons/plugin/scenes/ReplaceElement.tscn").instance();
+	var child_node : Node = load("res://addons/gd2cs.py/scenes/ReplaceElement.tscn").instance();
 	rename_list.add_child(child_node);
 		
 func reset_outputs():
@@ -164,7 +164,7 @@ func download_python():
 
 func callback(ud):  
 	if not popup : 
-		popup = load("res://addons/plugin/scenes/Editor_UI.tscn").instance();
+		popup = load("res://addons/gd2cs.py/scenes/Editor_UI.tscn").instance();
 		add_child(popup)
 		popup.find_node("EditorFileDialog").add_filter("*.gd") 
 		popup.find_node("SelectInput").connect("pressed",self,"add_input")

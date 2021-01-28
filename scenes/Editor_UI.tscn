@@ -1,6 +1,7 @@
 [gd_scene load_steps=2 format=2]
 
-[ext_resource path="res://addons/plugin/scenes/ReplaceElement.tscn" type="PackedScene" id=1]
+[ext_resource path="res://addons/gd2cs.py/scenes/ReplaceElement.tscn" type="PackedScene" id=1]
+
 
 [node name="WindowDialog" type="WindowDialog"]
 visible = true
