@@ -2,7 +2,6 @@
 
 [ext_resource path="res://addons/gd2cs.py/scenes/ReplaceElement.tscn" type="PackedScene" id=1]
 
-
 [node name="WindowDialog" type="WindowDialog"]
 visible = true
 margin_right = 742.0
@@ -270,4 +269,64 @@ text = "Continue Without"
 __meta__ = {
 "_edit_use_anchors_": false
 }
+
+[node name="NoRegexDialog" type="WindowDialog" parent="."]
+visible = true
+margin_left = 90.0
+margin_top = 131.0
+margin_right = 453.0
+margin_bottom = 371.0
+popup_exclusive = true
+window_title = "Install Regex Module?"
+resizable = true
+__meta__ = {
+"_edit_use_anchors_": false
+}
+
+[node name="Rows" type="VBoxContainer" parent="NoRegexDialog"]
+anchor_right = 1.0
+anchor_bottom = 1.0
+margin_left = 8.0
+margin_top = 8.0
+margin_right = -8.0
+margin_bottom = -8.0
+__meta__ = {
+"_edit_use_anchors_": false
+}
+
+[node name="Content" type="RichTextLabel" parent="NoRegexDialog/Rows"]
+margin_right = 347.0
+margin_bottom = 200.0
+size_flags_vertical = 3
+text = "This addon uses the RegEx module 'regex'. This can be installed automatically via pip. Please confirm you want to do so, or quit and install it manually. A manual installation should look somewhat like this :
+
+python -m pip install regex"
+__meta__ = {
+"_edit_use_anchors_": false
+}
+
+[node name="Buttons" type="HBoxContainer" parent="NoRegexDialog/Rows"]
+margin_top = 204.0
+margin_right = 347.0
+margin_bottom = 224.0
+
+[node name="InstallRegex" type="Button" parent="NoRegexDialog/Rows/Buttons"]
+margin_right = 171.0
+margin_bottom = 20.0
+size_flags_horizontal = 3
+text = "Automated Install"
+__meta__ = {
+"_edit_use_anchors_": false
+}
+
+[node name="Cancel" type="Button" parent="NoRegexDialog/Rows/Buttons"]
+margin_left = 175.0
+margin_right = 347.0
+margin_bottom = 20.0
+size_flags_horizontal = 3
+text = "Cancel"
+__meta__ = {
+"_edit_use_anchors_": false
+}
 [connection signal="pressed" from="NoPythonDialog/Rows/Buttons/Continue" to="NoPythonDialog" method="hide"]
+[connection signal="pressed" from="NoRegexDialog/Rows/Buttons/Cancel" to="NoRegexDialog" method="hide"]

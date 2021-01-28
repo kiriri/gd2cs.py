@@ -44,7 +44,7 @@ func print_to_console(text:String,color:Color = Color.white)->Label:
 	
 # Process the actual conversion
 func do_conversion():
-	var output = [];
+	
 	var files = get_files()
 	var executable = popup.find_node('PythonExecutable').text
 	var remove_res = RegEx.new()
@@ -57,14 +57,19 @@ func do_conversion():
 		
 		file[0] = remove_res.sub(file[0],"")
 		file[1] = remove_res.sub(file[1],"")
-		
-		var return_code = OS.execute(executable, ["addons/gd2cs.py/gd2cs.py","-i",file[0],"-o",file[1]],true,output)
-		if return_code != 0 : 
-			print_to_console("ERROR : Python exited with code " + str(return_code), Color.red)
-		for out in output:
-			print_to_console(out+"\n")
+		run_os_code(executable, ["addons/gd2cs.py/gd2cs.py","-i",file[0],"-o",file[1]])
 		get_editor_interface().get_resource_filesystem().update_file(file[1])
 		
+func run_os_code(executable:String,params:Array):
+	var output = [];
+	var return_code = OS.execute(executable,params,true,output)
+	if return_code != 0 : 
+		print_to_console("ERROR : Python exited with code " + str(return_code), Color.red)
+	for out in output:
+		if "This Script requires the regex package." in out:
+			popup.find_node("NoRegexDialog").popup_centered()
+		print_to_console(out+"\n")
+	return output
 
 # Read the files from the files list as an array of [input_path,output_path,node in list]
 func get_files()->Array:
@@ -161,6 +166,10 @@ func download_python():
 	popup.find_node("NoPythonDialog").hide()	
 	popup.hide()
 	
+func install_regex():
+	run_os_code(ProjectSettings.get_setting("gd2cs/config/python"),["-m","pip","install","regex"])
+	popup.find_node("NoRegexDialog").hide()
+	do_conversion()
 
 func callback(ud):  
 	if not popup : 
@@ -174,7 +183,8 @@ func callback(ud):
 		popup.find_node("ResetNames").connect("pressed",self,"reset_outputs")		
 		popup.find_node("ApplyRename").connect("pressed",self,"rename_all")		
 		popup.find_node("DontAskAgain").connect("toggled",self,"set_ask_no_python")		
-		popup.find_node("DownloadPython").connect("pressed",self,"download_python")		
+		popup.find_node("DownloadPython").connect("pressed",self,"download_python")
+		popup.find_node("NoRegexDialog").find_node("InstallRegex").connect("pressed",self,"install_regex")
 		print_to_console("Console Initialized") 
 	
 	popup.find_node('PythonExecutable').text = get_best_python_exec()
