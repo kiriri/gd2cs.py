@@ -14,7 +14,7 @@ Known issues :<br>
 <br>
 Usage : <br>
 In Godot:<br>
-Just drop the addon directly into your godot project, then activate it in your Project Settings.<br>
+Just drop the addon directly into your godot projects addon folder, then activate it in your Project Settings.<br>
 Then navigate to Project->Tools->gd2cs .<br>
 Hover over buttons or input controls to find out what they do. <br>
 <br>
