@@ -118,7 +118,7 @@ func add_rename_rule():
 	var child_node : Node = load("res://addons/gd2cs.py/scenes/ReplaceElement.tscn").instance();
 	rename_list.add_child(child_node);
 		
-func reset_outputs():
+func reset_outputs(): 
 	var files = get_files()
 	for file in files:
 		var node = file[2];

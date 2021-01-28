@@ -106,8 +106,8 @@ builtin_type = fr"(bool|uint|int|float|double|string|object|sbyte|byte|long|ulon
 valid_bool = fr"(true|false|True|False)"
 valid_int = fr"(-?[0-9]+)"
 valid_string = fr"(\".*?(?<!\\)\")"
-valid_string_term = fr"((?<!(#|//).*)(\".*?(?<!\\)\"|\'.*?(?<!\\)\'))"
-valid_gd_only_string_term = fr"((?<!(#|//).*)(\'([^']|\\')*?'(?<!\\')))"
+valid_string_term = fr"((?<!(#|//).*|\\)(\".*?(?<!\\)\"|\'.*?(?<!\\)\'))"
+valid_gd_only_string_term = fr"((?<!(#|//).*|\\)('([^']|\\')*?'(?<!\\')))"
 valid_float = fr"(-?([0-9]*\.[0-9]+|[0-9]+\.[0-9]*)f?)"
 valid_array = fr"({match_brackets})" # GD Definition
 valid_dictionary = fr"{match_curlies}" # GD Definition
@@ -247,6 +247,7 @@ replacements = [
 				}
 			],
 			"replacement":[fr"(?<=^@?)'([\w\W]*)'$",fr'"\1"'], # Single quote to double quote since in c# single quotes denote chars
+			"replacement_f":lambda f : print(f) or f
 			
 		},
 		# Anything not in a string
@@ -372,9 +373,10 @@ replacements = [
 		# Signals
 		[fr"(?<={separator})signal(?P<R>\s+{valid_name}\s*{match_braces})[\t ]*\;*(?={match_eol})",fr"[Signal] delegate void\g<R>;"],
 		# Unidentifiable variables const var
-		[fr"(?<={separator}const\s+)(?={valid_name}\s*:?\s*=)",r"var "], 
+		[fr"(?<={separator}const\s+)(?={valid_name}\s*:?\s*(=|setget))",r"var "], 
 		# Auto identify variables from export hints
-		[fr"(?<={separator})export\s*\(\s*(?P<T>{valid_term})\s*(,\s*(?P<A>.*?)?)\s*\)\s*(?P<B>(const\s+)?)var(?=\s+{valid_name}\s*=)",fr"[Export(\g<A>)] \g<B> \g<T>"],
+		[fr"(?<={separator})export\s*\(\s*(?P<T>{valid_term})\s*(,\s*(?P<A>.*?)?)\s*\)\s*(?P<B>(const\s+)?)(var|const|{full_name})(?=\s+{valid_name}\s*(=|setget))",fr"[Export(\g<A>)] \g<B> \g<T>"], # Has parameters => Can derive type
+		[fr"(?<={separator})export\s*(?P<B>(const\s+)?)(?=(var|const|{full_name})\s+{valid_name}\s*(=|setget))",fr"[Export] \g<B>"], # No parameters
 		# Auto identify bools. TODO : Also accept simple static terms such as 5*5, !true, "a" in ["a","b","c"]
 		[fr"(?<={separator})var(?=\s+{valid_name}\s*:?\s*=\s*{valid_bool}(.*))",r"bool"],
 		# Auto identify float
@@ -386,7 +388,7 @@ replacements = [
 		# Auto identify Object
 		[fr"(?<=\s|^)var\s+(?P<A>{valid_name})(?=\s*:?\s*=\s*new\s+(?P<B>{full_name})(.*))",fr"\g<B> \g<A>"], 
 		# const => static readonly unless value is struct
-		[fr"const[\t ]+(?!{builtin_type}[\t ])(?={valid_name}[\t ]+{valid_name}[\t ]+=)",fr"static readonly "],
+		[fr"const[\t ]+(?!{builtin_type}[\t ])(?={valid_name}[\t ]+{valid_name}[\t ]+(=|setget))",fr"static readonly "],
 		# setget
 		[fr"(?<=\s)setget[ \t]+(?P<S>{valid_name})((,)[ \t]*(?P<G>{valid_name}))",r"{get{return \g<G>();} set{\g<S>(value);}}"],
 		[fr"(?<=\s)setget[ \t]+(?P<S>{valid_name})",r"{set{\g<S>(value);}}"],
@@ -437,8 +439,8 @@ replacements = [
 			"match":match_full_function_cs,
 			"children":[
 				[fr"(?<=[\n;][\t ]*)var(?=[\t ]+{valid_name}[\t ]*(=|\n|;))",fr"__TYPE__"], # must have a well defined type. Replace var with __TYPE__ to notify user this needs to be defined manually.
-				[fr"(?<=[\n;][\t ]*)(?!.*{access_modifiers})(?=({field_prefix}[\t ]*)*{full_name}[\t ]+[a-zA-Z]{valid_name}?[\t ]*(=|\n|;))","public "],
-				[fr"(?<=[\n;][\t ]*)(?!.*{access_modifiers})(?=({field_prefix}[\t ]*)*{full_name}[\t ]+{valid_name}[\t ]*(=|\n|;))","private "], # Private if it starts with _ or other weird character
+				[fr"(?<=[\n;][\t ]*)(?!.*{access_modifiers})(?=({field_prefix}[\t ]*)*{full_name}[\t ]+[a-zA-Z]{valid_name}?[\t ]*(=|\n|;|setget))","public "],
+				[fr"(?<=[\n;][\t ]*)(?!.*{access_modifiers})(?=({field_prefix}[\t ]*)*{full_name}[\t ]+{valid_name}[\t ]*(=|\n|;|setget))","private "], # Private if it starts with _ or other weird character
 
 			],
 			#"replacement_f":lambda v: print("----- FUNC -----\n",v) or v
@@ -464,18 +466,18 @@ replacements = [
 			]
 		},
 
-		{ # Turn multiline strings into string additions
-			"repeat":False,
-			"match":fr"(?<!(#|//).*)(\"([^\"]|\\\")*?(?<!\\)\")", # In C# common strings can't be multiline. But the previous regex can produce them. In that case, we match all  strings, including these "bad" strings here
-			"children":[
-				{
-					"repeat":False,
-					"replacement":[fr"\n",r'\\n"+\n"'],# Split on linebreak
-				}
-			],
-			#"replacement_f": lambda v: print(v) or v
+		# { # Turn multiline strings into string additions
+		# 	"repeat":False,
+		# 	"match":fr"(?<!(#|//).*)(\"([^\"]|\\\")*?(?<!\\)\")", # In C# common strings can't be multiline. But the previous regex can produce them. In that case, we match all  strings, including these "bad" strings here
+		# 	"children":[
+		# 		{
+		# 			"repeat":False,
+		# 			"replacement":[fr"\n",r'\\n"+\n"'],# Split on linebreak
+		# 		}
+		# 	],
+		# 	#"replacement_f": lambda v: print(v) or v
 			
-		},
+		# },
 		{ # Rename all function calls and definitions, but not new X()
 			"requirement":lambda : rename_functions != 0,
 			"repeat":False,
