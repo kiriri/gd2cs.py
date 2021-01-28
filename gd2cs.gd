@@ -122,7 +122,8 @@ func reset_outputs():
 	var files = get_files()
 	for file in files:
 		var node = file[2];
-		node.find_node("Output").text = file[0]
+		node.find_node("Output").text = file[0] 
+	
 	
 	
 	

@@ -184,7 +184,6 @@ margin_right = -43.8212
 margin_bottom = 411.651
 window_title = "Open File(s)"
 dialog_text = "Test"
-display_mode = 1
 mode = 1
 show_hidden_files = true
 __meta__ = {
