@@ -1,0 +1,39 @@
+[gd_scene format=2]
+
+[node name="Element" type="HBoxContainer"]
+margin_right = 382.0
+margin_bottom = 14.0
+alignment = 1
+__meta__ = {
+"_edit_use_anchors_": false
+}
+
+[node name="Input" type="Label" parent="."]
+margin_top = 5.0
+margin_right = 173.0
+margin_bottom = 19.0
+size_flags_horizontal = 3
+text = "input.gd"
+align = 1
+
+[node name="VSeparator" type="VSeparator" parent="."]
+margin_left = 177.0
+margin_right = 181.0
+margin_bottom = 24.0
+
+[node name="Output" type="LineEdit" parent="."]
+margin_left = 185.0
+margin_right = 358.0
+margin_bottom = 24.0
+hint_tooltip = "Path of the cs Output file. Can be set directly or via the regex commands on the right-hand panel."
+size_flags_horizontal = 3
+text = "output.gd"
+align = 1
+placeholder_text = "Output Path"
+
+[node name="RemoveButton" type="Button" parent="."]
+margin_left = 362.0
+margin_right = 382.0
+margin_bottom = 24.0
+text = "X"
+[connection signal="button_up" from="RemoveButton" to="." method="queue_free"]

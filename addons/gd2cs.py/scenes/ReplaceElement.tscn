@@ -1,0 +1,41 @@
+[gd_scene format=2]
+
+[node name="Element" type="HBoxContainer"]
+margin_right = 371.0
+margin_bottom = 24.0
+alignment = 1
+__meta__ = {
+"_edit_use_anchors_": false
+}
+
+[node name="ReplaceMatch" type="LineEdit" parent="."]
+margin_right = 167.0
+margin_bottom = 24.0
+grow_horizontal = 2
+grow_vertical = 2
+hint_tooltip = "Regex matcher. Define in regex which part of the output path this replacement pair should match to.
+You can capture/group text by putting it in braces ()."
+size_flags_horizontal = 3
+text = "\\.gd$"
+
+[node name="VSeparator" type="VSeparator" parent="."]
+margin_left = 171.0
+margin_right = 175.0
+margin_bottom = 24.0
+
+[node name="ReplaceSub" type="LineEdit" parent="."]
+margin_left = 179.0
+margin_right = 346.0
+margin_bottom = 24.0
+grow_horizontal = 2
+grow_vertical = 2
+hint_tooltip = "Regex replacer. Specify how the matched string should be replaced. You can use $1, $2 , $3 to match the first, second, third capture group from the matcher. "
+size_flags_horizontal = 3
+text = ".cs"
+
+[node name="Button" type="Button" parent="."]
+margin_left = 350.0
+margin_right = 370.0
+margin_bottom = 24.0
+text = "X"
+[connection signal="pressed" from="Button" to="." method="queue_free"]

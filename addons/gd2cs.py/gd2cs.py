@@ -32,19 +32,23 @@ except ImportError:
 # Keywords in strings or comments may be replaced
 # Nested Dictionaries generate excessive/invalid semicolons
 
+
+# TODO : Replace X.new(...) with new X(...)
+# TODO : 
+# TODO : Rename Functions => All defined in this class or any variable that is or instances any of these types https://docs.godotengine.org/en/3.2/classes/index.html
+# TODO : Rename Vars
 # TODO : Turn all final regex into lexical words
 # TODO : Rename {Builtin_Class}.aa_bb_cc to AaBbCc (Eg Engine.is_editor_hint)
 # TODO : unnamed enums
-# TODO : Mark variables public (unless name starts with _)
-# TODO : Optionally rename fields
 # TODO : If extend Node, convert all Node function to capitalized forms
 # TODO : Process entire folders at once, recursively -r flag
 
 # Name of the file to be converted :
-filename = "GameData.gd"
-outname = "GameDataTest.cs"
+filename = "Input.gd"
+outname = "Output.cs"
 strip_tabs = 4 # Replace 4 subsequent spaces at the beginning of a line with a tab so offset patterns can match them. Applied before all other patterns.
-
+rename_functions = 0; # Rename all function calls and declarations
+rename_vars = 0; # Rename all fields and local variables and accessed variables (of the first degree only, because it's impossible to know if a gd script was referenced) 
 
 # Read console arguments : 
 i = 0
@@ -60,6 +64,9 @@ while i < len(sys.argv):
 		strip_tabs = sys.argv[i+1]
 		i+=2
 	else:
+		if arg == '--rename_all':
+			rename_functions = 1
+			rename_vars = 1
 		i+=1
 
 if not filename.endswith(".gd"):
@@ -100,30 +107,36 @@ valid_array = fr"({match_brackets})" # GD Definition
 valid_dictionary = fr"{match_curlies}" # GD Definition
 valid_value = fr"({valid_bool}|{valid_string}|{valid_float}|{valid_int}|{valid_array}|{valid_dictionary})"
 valid_value_c = fr"({valid_bool}|{valid_string}|{valid_float}|{valid_int})"
+full_name = fr"({valid_name}((\.{valid_name})*))" # Full name, including all dot access_modifiers
 op = fr"([\/%+\-*><]|\|\||&&|>=|<=|==|!=|\||&|\sin\s|\sas\s|\sis\s|\sand\s|\sor\s)" # Basic (binary) operators
 op_l = fr"(new\s|!|not\s)" # Right binding operators
-op_r = fr"((?<!\n\s*)({match_brackets}|{match_braces}|{match_curlies}))" # Left binding operators. GD doesn't allow newline, cs does, for simplicity we won't allow them
+op_r = fr"((?<!\n\s*)({match_brackets}|{match_braces}|(?<=new[\t ]+{full_name}[\t ]*{match_braces}\s*){match_curlies}))" # Left binding operators. GD doesn't allow newline, cs does, for simplicity we won't allow them
 #fcall = fr"(?<!public .*)({valid_name}\s*{match_braces}\s*{match_curlies}*)" # Deprecated, function call is now an op_r
-full_name = fr"({valid_name}((\.{valid_name})*))" # Full name, including all dot access_modifiers
 aterm = fr"({valid_value}|{valid_name})" # Atomic Terms without access_modifiers (.)
 aterm_c = fr"({valid_value_c}|{valid_name})" # Atomic Terms without access_modifiers (.)
-sterm = fr"(?<sterm>({aterm}|\((?&sterm)\))(\.{valid_name})*)" # Simple Terms without operators other than dot accessor
+sterm = fr"(?<sterm>({aterm})(\.{valid_name})*)" # Simple Terms without operators other than dot accessor
+sterm_c = fr"(?<sterm>({aterm_c})(\.{valid_name})*)" # Simple Terms without operators other than dot accessor
 #cterm = fr"{aterm}({op_r}(\.{full_name}){0,1})*"
 cterm = fr"(?<cterm>({aterm}|\((?&cterm)\))(\s*?{op_r}|\.{valid_name})*)" # Closed Terms without operators other than access_modifiers of any kind
 cterm_c = fr"(?<cterm>({aterm_c}|\((?&cterm)\))(\s*?{op_r}|\.{valid_name})*)" # Closed Terms without operators other than access_modifiers of any kind
-#valid_term = fr"(({op_l}\s*)*{sterm}(\s*{op_r})*((\s*{op}\s*({op_l}\s*)*{sterm})(\s*{op_r})*|\.[ \t]*{fcall}\s*{op_r}*)*)";
-valid_term = fr"(?<termo>(?!\s)(({op_l})*\s*?({cterm}|\(\s*(?&termo)\s*?\))\s*?((\s*{op}\s*|\.)(?&termo))*))";
-valid_term_c = fr"(?<termo>(?!\s)(({op_l})*\s*?({cterm_c}|\(\s*(?&termo)\s*?\))\s*?((\s*{op}\s*|\.)(?&termo))*))";
+valid_term_single = fr"({op_l}\s*)*{sterm}(\s*{op_r})*";
+valid_term_single_c = fr"({op_l}\s*)*{sterm_c}(\s*{op_r})*";
+valid_term_braced = fr"({op_l}\s*)*{match_braces}(\s*{op_r})*";
+valid_term_combination = fr"(?<vtc>\((?&vtc)\)|{valid_term_single}|({valid_term_single}|{valid_term_braced})([\t ]*{op}[\t ]*({valid_term_single}|{valid_term_braced})|\.{valid_term_single})+)"
+valid_term_combination_c = fr"(?<vtc>\((?&vtc)\)|{valid_term_single_c}|({valid_term_single_c}|{valid_term_braced})([\t ]*{op}[\t ]*({valid_term_single_c}|{valid_term_braced})|\.{valid_term_single})+)"
+valid_term = valid_term_combination#fr"(?<termo>(?!\s)(({op_l})*\s*?({cterm}|\(\s*(?&termo)\s*?\))\s*?((\s*{op}\s*|\.)(?&termo))*))";
+valid_term_c = valid_term_combination_c#fr"(?<termo>(?!\s)(({op_l})*\s*?({cterm_c}|\(\s*(?&termo)\s*?\))\s*?((\s*{op}\s*|\.)(?&termo))*))";
+assignable = fr"({valid_name}(\.{valid_name}|{match_braces}|{match_brackets})*(?<!{match_braces}))" # Something that can be assigned to 
 # valid_term = fr"(?!\s)(?<termo>({op_l})*\s*?({cterm}|\(\s*(?&termo)\s*?\))\s*?(\s*{op}\s*(?&termo))*)(?={separator})";
-match_comments_old = fr"[ \t]*#.*$"
-match_comments_new = fr"[ \t]*\/\/.*$"
+match_comments_old = fr"([ \t]*#.*$)"
+match_comments_new = fr"([ \t]*\/\/.*$)"
 match_eol = fr"(?<eol>({match_comments_old}|{match_comments_new}|[\t ])*?$)" # Remaining bits of the line, such as tabs, spaces, comments etc
 
 
 
 # FINAL lexical words (These provide fixed named output groups and therefore should not be used elsewhere)
 match_full_function_gd = fr"(?P<A>[\t ]*)({func_prefix}[\t ]+)*func[\t ]+(?P<Name>{valid_name})[\t ]*(?P<Params>{match_braces})([\t ]*->[\t ]*(?P<R_Type>.*))*[ \t]*:(?P<Comments>.*)\n(?P<Content>((\1[\t ]+.*(\n|{eof}))|{comment_or_empty})*)"
-match_full_function_cs = fr"(?P<A>[\t ]*)({func_prefix}[\t ]+)*({access_modifiers}[\t ]+)+(?P<R_Type>\S*)[\t ]+(?P<Name>{valid_name})[\t ]*(?P<Params>{match_braces})[\t ]*(?P<Comments>.*)\s*(?P<Content>{match_curlies})"
+match_full_function_cs = fr"(?P<A>[\t ]*)({func_prefix}[\t ]+)*(?P<R_Type>{full_name})[\t ]+(?P<Name>{valid_name})[\t ]*(?P<Params>{match_braces})[\t ]*(?P<Comments>.*)\s*(?P<Content>{match_curlies})"
 match_type_hinting = fr"(?<!\/\/.*)(?<={valid_name}[\t ]*\( *.*)(?P<Name>{valid_name})[\t ]*:[\t ]*(?P<Type>{valid_name})"
 match_function_arguments = fr"(?<=^\s*({func_prefix}[\t ]+)*{access_modifiers}+[\t ]+({valid_name}[\t ]+)?{valid_name}[\t ]*){match_braces}"
 match_function_header = fr"(?<=^\s*)(?P<AccessModifiers>({func_prefix}[\t ]+)*{access_modifiers}+)[\t ]+((?P<Type>{valid_name})[\t ]+)?(?P<Name>{valid_name})[\t ]*(?P<Args>{match_braces})"
@@ -144,7 +157,24 @@ def run(code,variables = {}):
 	return results["__result"];
 
 def to_pascal(text):
-	return text[0].upper() + text[1:].lower()
+	return (text[0].upper() + text[1:]) if len(text) > 0 else text;
+
+def const_to_pascal(text):
+	return (text[0].upper() + text[1:].lower()) if len(text) > 0 else text;
+
+# Change function name to c# style
+def rename_function(text):
+	return text;
+
+# Change field name to c# style
+def rename_field(text):
+	return text;
+
+# Change local variable name to c# style
+def rename_local_var(text):
+	return text;
+
+
 
 #  def match_inverse(pattern): # May not be so simple
 #  	return fr"(?<={t0}|{pattern})([\s\S]*?)(?<=(?)\1)(?={pattern}|{eof})";
@@ -187,6 +217,8 @@ replacements = [
 		[fr"^\s*tool\s*$"," "], 
 		[fr"^\s*extends\s*.*\s*$"," "],
 		[fr"^\s*class_name\s*.*\s*$"," "], # Class Name is ignored entirely. C# Classes must be named like the file they are in.
+		# Builtin constructors, like "Vector2()" => "new Vector2()"
+		[fr"(?<={separator})(?<!new\s+)(?P<A>\s*)(?P<B>{builtin_constructors})\s*\(",fr"\g<A>new \g<B>("],
 		# Turn lowest level unprocessed dictionaries. KV pairs are still of form K:V though
 		[fr"(?<!(new Dictionary\(\)|new Array\(\)))(?<=([:,={{[(]|return\s+))(?P<W>{match_eol}*\s*)(?P<C>{match_curlies})",r"\g<W>new Dictionary()\g<C>"], 
 		# Same for array
@@ -283,7 +315,7 @@ replacements = [
 				},
 				{
 					"repeat":False,
-					"match":fr"[\w\W]*{separator}yield\s*\([\w\W]*", # Skip if the function doesnt contain the keyword yield, otherwise continue with its entirety
+					"match":fr"[\w\W]*{separator}await\s+", # Skip if the function doesnt contain the keyword yield, otherwise continue with its entirety
 					"children":[
 						{
 							"replacement":[fr"(?<={access_modifiers}+)(?![ \t]+async)",fr" async"], # Add async to function signature, right after "public"
@@ -309,14 +341,15 @@ replacements = [
 				}
 			],
 			
+			
 		},
 
 		## If/Else
 		
 		# replace if/elif blocks 
-		[fr"^(?P<A>[ \t]*)(?P<B>if|elif)(?=[\t \(])[\t ]*(?P<C>({valid_term}){{1,1}})[ \t]*:(?P<Comment>{match_eol})(?P<E>\n({comment_or_empty}*(\1[\t ]+.*(\n|{eof}))*)*)",r"\g<A>\g<B>(\g<C>)\g<Comment>\n\g<A>{\g<E>\g<A>}\n"], 
+		[fr"^(?P<A>[ \t]*)(?P<B>if|elif)(?=[\t \(])[\t ]*(?P<C>{valid_term}{{1,1}})[ \t]*:(?P<Comment>{match_eol})(?P<E>\n({comment_or_empty}*(\1[\t ]+.*(\n|{eof}))*)*)",r"\g<A>\g<B>(\g<C>)\g<Comment>\n\g<A>{\g<E>\g<A>}\n"], 
 		# single line if/else : * (This must not capture subsequent indendented lines)
-		[fr"^(?P<A>[ \t]*)(?P<B>if|elif)(?=[\t \(])[\t ]*(?P<C>({valid_term}){{1,1}})[ \t]*:(?P<D>[^\n]*?)(?P<Comment>{match_eol})",r"\g<A>\g<B>(\g<C>)\g<Comment>\n\g<A>\t\g<D>"], 
+		[fr"^(?P<A>[ \t]*)(?P<B>if|elif)(?=[\t \(])[\t ]*(?P<C>{valid_term}{{1,1}})[ \t]*:(?P<D>[^\n]*?)(?P<Comment>{match_eol})",r"\g<A>\g<B>(\g<C>)\g<Comment>\n\g<A>\t\g<D>"], 
 		# elif
 		[fr"(?<={separator})elif(?={separator})","else if"],
 		# replace else
@@ -327,7 +360,7 @@ replacements = [
 		## Variable Declarations
 
 		# Remove trailing colon if it didnt have an explicit type
-		[fr"(?<=(\s|^)var\s+{valid_name}\s*):(?=\s*=)",fr" "], 
+		[fr"(?<=(\s|^)var\s+{valid_name}\s*):(?=\s*(=))",fr" "], 
 		# Variable definitions, if they have a valid type
 		[fr"var[\t ]+(?P<Name>{valid_name})[\t ]*:[\t ]*(?P<Type>{valid_name})",r"\g<Type> \g<Name>"], 
 		# Signals
@@ -359,8 +392,6 @@ replacements = [
 		[fr"(?<={separator})not(?=[\s(])\s*","!"], 
 		# Direct casts
 		[fr"(?<={separator})(\s*){builtin_type}\s*\(",fr"\2(\3)("], 
-		# Builtin constructors, like "Vector2()" => "new Vector2()"
-		[fr"(?<={separator})(?<!new\s+)(?P<A>\s*)(?P<B>{builtin_constructors})\s*\(",fr"\g<A>new \g<B>("],
 		# typeof(v) => v.GetType()
 		[fr"(?<={separator}\s*)typeof\s*{match_braces}",r"\2.GetType()"], 
 		# TODO : Don't affect strings and comments
@@ -384,10 +415,12 @@ replacements = [
 
 		# semicolon at end of standalone terms (such as function calls) (but never after values like new T() or {valid_value})
 		[fr"(?<![,]\s*)(?<=^[ \t]*)(?!{reserved_keywords}\s*\(*)(?P<Content>{valid_term_c}[ \t]*)(?P<Comment>{match_eol})(?!\s*[{{[(])",fr"\g<Content>;\g<Comment>"], 
-		# semicolon at end of assignments
-		[fr"((?<=^[ \t]*|((var|const|public|private|static|async|delegate|{match_brackets})[ \t])*)({valid_name} )?{valid_term}[\t ]*[\+\-]?=[\t ]*{valid_term}[ \t]*)(?P<E>{match_eol})(?!\s*[{{(])",fr"\1;\g<E>"], 
+		# semicolon after var X\n
+		[fr"(?<=var[\t ]+{valid_name})(?=[ \t]*\n)",fr";"],
+		# semicolon at end of assignments TODO : Super expensive
+		[fr"((?<=^[ \t]*|((var|const|public|private|static|async|delegate|{match_brackets})[ \t])*)({valid_name}[\t ]+)?{assignable}[\t ]*[\+\-]?=[\t ]*{valid_term_c}[ \t]*)(?P<E>{match_eol})(?!\s*[{{(,])",fr"\1;\g<E>"],
 		# return statements TODO : May be surrounded by braces or curlies, which will not count as ^ or $ 
-		[fr"^(?P<A>[ \t]*return([\t ]*{valid_term})?)(?P<B>{match_eol})",fr"\g<A>;\g<B>"], 
+		[fr"^(?P<A>[ \t]*return([\t ]*{valid_term_c})?)(?P<B>{match_eol})",fr"\g<A>;\g<B>"], 
 
 		## Cleanup
 
@@ -397,11 +430,12 @@ replacements = [
 			"inverted":True,
 			"match":match_full_function_cs,
 			"children":[
-				[fr"(?<={separator}[\t ]*)var(?=[\t ]+{valid_name}[\t ]+=)",fr"__TYPE__"], # must have a well defined type. Replace var with __TYPE__ to notify user this needs to be defined manually.
-				[fr"(?<=[\n;][\t ]*)(?!.*{access_modifiers})(?=({field_prefix}[\t ]*)*{full_name}[\t ]+[a-zA-Z]{valid_name}?[\t ]+=)","public "],
-				[fr"(?<=[\n;][\t ]*)(?!.*{access_modifiers})(?=({field_prefix}[\t ]*)*{full_name}[\t ]+{valid_name}[\t ]+=)","private "], # Private if it starts with _ or other weird character
+				[fr"(?<=[\n;][\t ]*)var(?=[\t ]+{valid_name}[\t ]*(=|\n|;))",fr"__TYPE__"], # must have a well defined type. Replace var with __TYPE__ to notify user this needs to be defined manually.
+				[fr"(?<=[\n;][\t ]*)(?!.*{access_modifiers})(?=({field_prefix}[\t ]*)*{full_name}[\t ]+[a-zA-Z]{valid_name}?[\t ]*(=|\n|;))","public "],
+				[fr"(?<=[\n;][\t ]*)(?!.*{access_modifiers})(?=({field_prefix}[\t ]*)*{full_name}[\t ]+{valid_name}[\t ]*(=|\n|;))","private "], # Private if it starts with _ or other weird character
 
-			]
+			],
+			#"replacement_f":lambda v: print("----- FUNC -----\n",v) or v
 		},
 		# Strip "pass", which is replaced already by (maybe empty) curlies.
 		[fr"^[\t ]*pass[\t ]*;*[\t ]*\n",""], 
@@ -412,7 +446,7 @@ replacements = [
 			"children":[
 				{
 					"match":fr"(?<=PROPERTY_USAGE_).*", # First turn to PascalCase
-					"replacement_f":lambda t: regex.subf(fr"[A-Z]+",lambda s: to_pascal(s.group(0)),t,0,flags),
+					"replacement_f":lambda t: regex.subf(fr"[A-Z]+",lambda s: const_to_pascal(s.group(0)),t,0,flags),
 				},
 				{ # Then strip spaces
 					"replacement":["_",""],
@@ -435,6 +469,23 @@ replacements = [
 			],
 			#"replacement_f": lambda v: print(v) or v
 			
+		},
+		{ # Rename all function calls and definitions, but not new X()
+			"requirement":lambda : rename_functions != 0,
+			"repeat":False,
+			"match":fr"(?<={separator}|[.]){valid_name}(?=[\t ]*[(])",
+			"children":[
+				{
+					"repeat":False,
+					"inverted":True,
+					"match":"_",# Split on underscore
+					"replacement_f":to_pascal
+				},
+				{
+					"repeat":False,
+					"replacement":[fr"_",fr""]
+				}
+			]
 		},
 	]
 }
@@ -609,6 +660,10 @@ def _object_replace_child_call(v,obj):
 	return v
 
 def object_replace(obj,text):
+
+	if "requirement" in obj and not obj["requirement"]():
+		return text # Requirement failed, don't do anything
+
 	match = obj['match'] if 'match' in obj else False;
 	
 	if not match:
@@ -620,7 +675,6 @@ def object_replace(obj,text):
 	if not inverted:
 		text = regex.subf(match,lambda v: _object_replace_child_call(v.group(0),obj),text,0,flags)
 	else:
-		# TODO : Custom inversion
 		matches = regex.finditer(match,text,flags)
 		prev_i = 0
 		result = ""
@@ -724,13 +778,15 @@ with open(filename,'r+') as f:
 		extending = "Godot.Object"
 	tool = len(regex.findall(r"^tool.*$",text,flags)) > 0
 
-	for pair in replacements:
-		text = _try_replace(text,pair)
-
 
 	for pair in function_replacements:
 		pair[0] = fr"(?<={separator})(?<![.])" + pair[0] + fr"(?=\()";
 		text = regex.sub(pair[0], pair[1], text,0,flags)
+
+
+	for pair in replacements:
+		text = _try_replace(text,pair)
+
 	
 	for pair in variable_replacements:
 		pair[0] = fr"(?<={separator})(?<![.])" + pair[0] + fr"(?={separator})(?!\()";
@@ -740,7 +796,9 @@ with open(filename,'r+') as f:
 
 	text = regex.sub("^","\t",text,0,flags); # Offset all the code by 1 tab, ready to be surrounded by class{...}
 
-	class_name = regex.match(r'.*(?=\.cs)',outname)[0];
+	print(outname)
+	class_name = regex.findall(fr"([^/]*)(?=\.cs)",outname,flags)[0];
+	print(class_name)
 	text = f"{header}\n{'[Tool]' if tool else ''}\npublic class {class_name} : {extending}\n{{\n" + text + "\n}";
 	with open(outname,'w') as wf:
 		wf.write(text);

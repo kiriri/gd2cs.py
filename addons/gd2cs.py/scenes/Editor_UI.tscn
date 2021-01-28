@@ -1,0 +1,272 @@
+[gd_scene load_steps=2 format=2]
+
+[ext_resource path="res://addons/plugin/scenes/ReplaceElement.tscn" type="PackedScene" id=1]
+
+[node name="WindowDialog" type="WindowDialog"]
+visible = true
+margin_right = 742.0
+margin_bottom = 357.0
+popup_exclusive = true
+window_title = "gd2cs.py"
+resizable = true
+__meta__ = {
+"_edit_use_anchors_": false
+}
+
+[node name="VBoxContainer" type="VBoxContainer" parent="."]
+anchor_right = 1.0
+anchor_bottom = 1.0
+margin_left = 8.0
+margin_top = 8.0
+margin_right = -8.0
+margin_bottom = -38.0
+size_flags_horizontal = 3
+size_flags_vertical = 3
+__meta__ = {
+"_edit_use_anchors_": false
+}
+
+[node name="TopBottomSplit" type="VSplitContainer" parent="VBoxContainer"]
+margin_right = 726.0
+margin_bottom = 311.0
+size_flags_horizontal = 3
+size_flags_vertical = 3
+split_offset = 200
+__meta__ = {
+"_edit_use_anchors_": false
+}
+
+[node name="LeftRightSplit" type="HSplitContainer" parent="VBoxContainer/TopBottomSplit"]
+margin_right = 726.0
+margin_bottom = 276.0
+size_flags_stretch_ratio = 3.0
+
+[node name="Panel_L" type="VBoxContainer" parent="VBoxContainer/TopBottomSplit/LeftRightSplit"]
+margin_right = 357.0
+margin_bottom = 276.0
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="SelectInput" type="Button" parent="VBoxContainer/TopBottomSplit/LeftRightSplit/Panel_L"]
+margin_right = 357.0
+margin_bottom = 20.0
+hint_tooltip = "Select one or more gd script files to convert to c#. The output path will automatically be derived from your regex terms (right hand panel)."
+text = "Select Input"
+
+[node name="Files" type="ScrollContainer" parent="VBoxContainer/TopBottomSplit/LeftRightSplit/Panel_L"]
+margin_top = 24.0
+margin_right = 357.0
+margin_bottom = 276.0
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="Files" type="VBoxContainer" parent="VBoxContainer/TopBottomSplit/LeftRightSplit/Panel_L/Files"]
+margin_right = 357.0
+margin_bottom = 252.0
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="Panel_R" type="VBoxContainer" parent="VBoxContainer/TopBottomSplit/LeftRightSplit"]
+margin_left = 369.0
+margin_right = 726.0
+margin_bottom = 276.0
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="PyEx" type="HBoxContainer" parent="VBoxContainer/TopBottomSplit/LeftRightSplit/Panel_R"]
+margin_right = 357.0
+margin_bottom = 24.0
+
+[node name="Label" type="Label" parent="VBoxContainer/TopBottomSplit/LeftRightSplit/Panel_R/PyEx"]
+margin_top = 5.0
+margin_right = 176.0
+margin_bottom = 19.0
+size_flags_horizontal = 3
+text = "Python Executable"
+
+[node name="PythonExecutable" type="LineEdit" parent="VBoxContainer/TopBottomSplit/LeftRightSplit/Panel_R/PyEx"]
+margin_left = 180.0
+margin_right = 357.0
+margin_bottom = 24.0
+hint_tooltip = "Path variable or direct path to the python executable. On most systems this is either py, python, python3 or python2. If any of those worked, this field should be prefilled automatically."
+size_flags_horizontal = 3
+text = "py"
+
+[node name="AddRR" type="Button" parent="VBoxContainer/TopBottomSplit/LeftRightSplit/Panel_R"]
+margin_top = 28.0
+margin_right = 357.0
+margin_bottom = 48.0
+hint_tooltip = "Add a new Regex Rename operation.
+These get executed sequentially. The output file name will also determine the c# class name."
+text = "Add Rename Rule (Regex sub)"
+
+[node name="NameRepl" type="ScrollContainer" parent="VBoxContainer/TopBottomSplit/LeftRightSplit/Panel_R"]
+margin_top = 52.0
+margin_right = 357.0
+margin_bottom = 252.0
+size_flags_horizontal = 3
+size_flags_vertical = 3
+__meta__ = {
+"_edit_use_anchors_": false
+}
+
+[node name="NameReplace" type="VBoxContainer" parent="VBoxContainer/TopBottomSplit/LeftRightSplit/Panel_R/NameRepl"]
+margin_right = 357.0
+margin_bottom = 200.0
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="ReplaceElement" parent="VBoxContainer/TopBottomSplit/LeftRightSplit/Panel_R/NameRepl/NameReplace" instance=ExtResource( 1 )]
+margin_right = 357.0
+
+[node name="HBoxContainer" type="HBoxContainer" parent="VBoxContainer/TopBottomSplit/LeftRightSplit/Panel_R"]
+margin_top = 256.0
+margin_right = 357.0
+margin_bottom = 276.0
+
+[node name="ApplyRename" type="Button" parent="VBoxContainer/TopBottomSplit/LeftRightSplit/Panel_R/HBoxContainer"]
+margin_right = 176.0
+margin_bottom = 20.0
+hint_tooltip = "Apply the full renaming stack to ALL output file paths. This will not automatically reset them to their input file paths, since with a proper matcher nothing should match twice."
+size_flags_horizontal = 3
+text = "Apply Path Renames"
+
+[node name="ResetNames" type="Button" parent="VBoxContainer/TopBottomSplit/LeftRightSplit/Panel_R/HBoxContainer"]
+margin_left = 180.0
+margin_right = 357.0
+margin_bottom = 20.0
+hint_tooltip = "Reset all output paths to their input value."
+size_flags_horizontal = 3
+text = "Reset Outputs"
+
+[node name="Console" type="Panel" parent="VBoxContainer/TopBottomSplit"]
+margin_top = 288.0
+margin_right = 726.0
+margin_bottom = 311.0
+size_flags_horizontal = 3
+
+[node name="ScrollContainer" type="ScrollContainer" parent="VBoxContainer/TopBottomSplit/Console"]
+anchor_right = 1.0
+anchor_bottom = 1.0
+margin_left = 4.0
+margin_top = 4.0
+margin_right = -4.0
+margin_bottom = -4.0
+rect_min_size = Vector2( 0, 20 )
+__meta__ = {
+"_edit_use_anchors_": false
+}
+
+[node name="VBoxContainer" type="VBoxContainer" parent="VBoxContainer/TopBottomSplit/Console/ScrollContainer"]
+margin_right = 718.0
+margin_bottom = 20.0
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="ConvertButton" type="Button" parent="."]
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+margin_left = 8.0
+margin_top = -28.0
+margin_right = -8.0
+margin_bottom = -8.0
+hint_tooltip = "Start the conversion. This may take  a while, especially if you have individually large code files."
+text = "Convert"
+__meta__ = {
+"_edit_use_anchors_": false
+}
+
+[node name="EditorFileDialog" type="EditorFileDialog" parent="."]
+margin_left = -541.821
+margin_top = 127.651
+margin_right = -43.8212
+margin_bottom = 411.651
+window_title = "Open File(s)"
+dialog_text = "Test"
+display_mode = 1
+mode = 1
+show_hidden_files = true
+__meta__ = {
+"_edit_use_anchors_": false
+}
+
+[node name="NoPythonDialog" type="WindowDialog" parent="."]
+visible = true
+margin_left = 90.0
+margin_top = 131.0
+margin_right = 453.0
+margin_bottom = 371.0
+popup_exclusive = true
+window_title = "Download Python?"
+resizable = true
+__meta__ = {
+"_edit_use_anchors_": false
+}
+
+[node name="Rows" type="VBoxContainer" parent="NoPythonDialog"]
+anchor_right = 1.0
+anchor_bottom = 1.0
+margin_left = 8.0
+margin_top = 8.0
+margin_right = -8.0
+margin_bottom = -8.0
+__meta__ = {
+"_edit_use_anchors_": false
+}
+
+[node name="Content" type="RichTextLabel" parent="NoPythonDialog/Rows"]
+margin_right = 347.0
+margin_bottom = 172.0
+size_flags_vertical = 3
+text = "No python installation could be detected.
+Would you like to download python now?
+This will open your browser.
+
+(In case you do have a valid python environment installed, you will be able to specify it manually by path or by path variable.)"
+__meta__ = {
+"_edit_use_anchors_": false
+}
+
+[node name="DontAsk" type="HBoxContainer" parent="NoPythonDialog/Rows"]
+margin_top = 176.0
+margin_right = 347.0
+margin_bottom = 200.0
+alignment = 1
+
+[node name="Label" type="Label" parent="NoPythonDialog/Rows/DontAsk"]
+margin_left = 111.0
+margin_top = 5.0
+margin_right = 207.0
+margin_bottom = 19.0
+text = "Don't ask again"
+
+[node name="DontAskAgain" type="CheckBox" parent="NoPythonDialog/Rows/DontAsk"]
+margin_left = 211.0
+margin_right = 235.0
+margin_bottom = 24.0
+
+[node name="Buttons" type="HBoxContainer" parent="NoPythonDialog/Rows"]
+margin_top = 204.0
+margin_right = 347.0
+margin_bottom = 224.0
+
+[node name="DownloadPython" type="Button" parent="NoPythonDialog/Rows/Buttons"]
+margin_right = 171.0
+margin_bottom = 20.0
+size_flags_horizontal = 3
+text = "Download Python"
+__meta__ = {
+"_edit_use_anchors_": false
+}
+
+[node name="Continue" type="Button" parent="NoPythonDialog/Rows/Buttons"]
+margin_left = 175.0
+margin_right = 347.0
+margin_bottom = 20.0
+size_flags_horizontal = 3
+text = "Continue Without"
+__meta__ = {
+"_edit_use_anchors_": false
+}
+[connection signal="pressed" from="NoPythonDialog/Rows/Buttons/Continue" to="NoPythonDialog" method="hide"]
