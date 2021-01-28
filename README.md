@@ -2,6 +2,7 @@
 
 # gd2cs.py
 Regex based Python script that converts arbitrary gdscript code to C#<br>
+Wrapped in a graphical UI plugin for use in the Godot Editor.<br>
 It's far from perfect, but it it should let you skip most of the gruntwork when converting. <br> 
 It analyzes syntax only. No fancy code analysis.
 <br /> 
@@ -11,7 +12,14 @@ Known issues :<br>
 \- Keywords in strings or comments may be replaced<br>
 \- Ternary operators such as A?B:C are too expensive to parse correctly and are therefore ignored in some transformations.<br>
 <br>
-Usage : <br>specify the input gd file via -f "\*" and the target output file via -o "\*" . <br>
+Usage : <br>
+In Godot:<br>
+Just drop the addon directly into your godot project, then activate it in your Project Settings.<br>
+Then navigate to Project->Tools->gd2cs .<br>
+Hover over buttons or input controls to find out what they do. <br>
+<br>
+From Python:<br>
+Specify the input gd file via -f "\*" and the target output file via -o "\*" . <br>
 Use -t * to specify the number of spaces in a tab (default = 4). This will replace consecutive spaces with tabs so the regex patterns can match a mix of space-offsets and tab-offsets (eg "else:\n&nbsp;&nbsp;&nbsp;&nbsp;pass" will become "else:\n\tpass").<br>
 <br>
 Example :<br>
