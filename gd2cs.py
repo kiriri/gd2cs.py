@@ -40,6 +40,10 @@ while i < len(sys.argv):
 		if arg == '--rename_all':
 			rename_functions = 1
 			rename_vars = 1
+		elif arg == '--rename_functions':
+			rename_functions = 1
+		elif arg == '--rename_variables':
+			rename_vars = 1
 		i+=1
 
 if not filename.endswith(".gd"):
@@ -69,6 +73,7 @@ except ImportError:
 # Nested Dictionaries generate excessive/invalid semicolons
 
 
+# TODO : children as dictionary, key as match_group, value as array (Otherwise ambiguous with array replacement)
 # TODO : Replace X.new(...) with new X(...)
 # TODO : 
 # TODO : Rename Functions => All defined in this class or any variable that is or instances any of these types https://docs.godotengine.org/en/3.2/classes/index.html
@@ -94,7 +99,7 @@ separator = fr"([{{}}\[\]\s,:;=()])"
 comment_or_empty = "((^\s*\n)|(^\s*\/\/.*\n))"
 rpc = fr"(remote|master|puppet|remotesync|mastersync|puppetsync)";
 access_modifiers = fr"(public|private|protected)"
-field_prefix = fr"({access_modifiers}|override|static|const|readonly)"
+field_prefix = fr"({access_modifiers}|override|static|const|readonly|delegate)"
 func_prefix = fr"({rpc}|{access_modifiers}|virtual|override|static|async|const|readonly)" # Most of these are c#
 reserved_keywords = fr"(public|static|var|const|foreach|for|while|if|else|switch|case|return|using|new)"
 valid_name = fr"([_a-zA-Z]+[_\-a-zA-Z0-9]*(?<!{reserved_keywords}))" 
@@ -132,15 +137,16 @@ valid_term_combination = fr"(?<vtc>\((?&vtc)\)|{valid_term_single}|({valid_term_
 valid_term_combination_c = fr"(?<vtc>\((?&vtc)\)|{valid_term_single_c}|({valid_term_single_c}|{valid_term_braced})([\t ]*{op}[\t ]*({valid_term_single_c}|{valid_term_braced})|\.{valid_term_single})+)"
 valid_term = valid_term_combination#fr"(?<termo>(?!\s)(({op_l})*\s*?({cterm}|\(\s*(?&termo)\s*?\))\s*?((\s*{op}\s*|\.)(?&termo))*))";
 valid_term_c = valid_term_combination_c#fr"(?<termo>(?!\s)(({op_l})*\s*?({cterm_c}|\(\s*(?&termo)\s*?\))\s*?((\s*{op}\s*|\.)(?&termo))*))";
-assignable = fr"({valid_name}(\.{valid_name}|{match_braces}|{match_brackets})*(?<!{match_braces}))" # Something that can be assigned to 
+assignable = fr"({valid_name}(\.{valid_name}|{match_braces}|{match_brackets})*(?<!{match_braces}))" # Something that can be assigned to.
 # valid_term = fr"(?!\s)(?<termo>({op_l})*\s*?({cterm}|\(\s*(?&termo)\s*?\))\s*?(\s*{op}\s*(?&termo))*)(?={separator})";
 match_comments_old = fr"([ \t]*#.*$)"
 match_comments_new = fr"([ \t]*\/\/.*$)"
-match_eol = fr"(?<eol>({match_comments_old}|{match_comments_new}|[\t ])*?$)" # Remaining bits of the line, such as tabs, spaces, comments etc
-
+match_eol = fr"(?<eol>({match_comments_old}|{match_comments_new}|[\t ])*?$)" # Remaining bits of the line, such as tabs, spaces, comments etc.
+getter_setter = fr"(?={{\s*(get|set)){match_curlies}" # C# getter/setter block. Only valid within match_field_declaration or similar.
 
 
 # FINAL lexical words (These provide fixed named output groups and therefore should not be used elsewhere)
+match_field_declaration = fr"(?<=[;\n]|{t0}[ \t]*)(?P<Attributes>(\[.*\]\s*)*)(?P<Prefixes>({field_prefix}[ \t]+)*)(?P<Type>var|const|{full_name})[ \t]+(?P<Name>{valid_name})([\t ]*:[\t ]*(?P<Type>{full_name})?)?(?=\s*[\n;=]|{getter_setter})(?![ \t]*\()";
 match_full_function_gd = fr"(?P<A>[\t ]*)({func_prefix}[\t ]+)*func[\t ]+(?P<Name>{valid_name})[\t ]*(?P<Params>{match_braces})([\t ]*->[\t ]*(?P<R_Type>.*))*[ \t]*:(?P<Comments>.*)\n(?P<Content>((\1[\t ]+.*(\n|{eof}))|{comment_or_empty})*)"
 match_full_function_cs = fr"(?P<A>[\t ]*)({func_prefix}[\t ]+)*(?P<R_Type>{full_name})[\t ]+(?P<Name>{valid_name})[\t ]*(?P<Params>{match_braces})[\t ]*(?P<Comments>.*)\s*(?P<Content>{match_curlies})"
 match_type_hinting = fr"(?<!\/\/.*)(?<={valid_name}[\t ]*\( *.*)(?P<Name>{valid_name})[\t ]*:[\t ]*(?P<Type>{valid_name})"
@@ -164,6 +170,13 @@ def run(code,variables = {}):
 
 def to_pascal(text):
 	return (text[0].upper() + text[1:]) if len(text) > 0 else text;
+
+def to_camel(text):
+	return (text[0].lower() + text[1:]) if len(text) > 0 else text;
+
+def snake_to_camel(text):
+    components = text.split('_')
+    return components[0] + ''.join(x.title() for x in components[1:])
 
 def const_to_pascal(text):
 	return (text[0].upper() + text[1:].lower()) if len(text) > 0 else text;
@@ -198,11 +211,13 @@ replacements = [
 	#	"repeat":False, # If False, only run this replacement once. Otherwise repeat until no more changes occur. Default True
 	#	"inverted":True, # If true, match all parts of the text that do NOT match "match". Essentially split the text by "match" and continue with the split parts individually.
 	# 	"match":fr"return", # Match text to this. Pass result to children and/or replacement regex if it exists
+	#	"match_group":"Name", # Limit the selection to only 1 group from match. This way big statements can be reused (slower, but more compact and readable)
 	# 	"children":[
 	# 		{
 	# 			"replacement":[fr"r",fr"bed"]
 	# 		}
 	# 	], # Children get matched contents of parent. If multiple children, subsequent children receive the modified versions (these may not necessarily still match the original pattern)
+	#      # Children can also be a dictionary, in which case each key is equivalent to match_group. For technical reasons none of the groups can overlap though.
 	# 	"replacement":[fr"(.*)",r"\1"], # Match result strings of match (or input text if match is undefined) after the children are done with it and do regex replace
 	# 	"replacement_f": lambda v: run("__result = v",{"v":v}) # Excecuted after everything else is done. Used by any rules that cannot be put into simple regex
 	# },
@@ -478,7 +493,7 @@ replacements = [
 		# 	#"replacement_f": lambda v: print(v) or v
 			
 		# },
-		{ # Rename all function calls and definitions, but not new X()
+		{ # Rename all function calls and definitions
 			"requirement":lambda : rename_functions != 0,
 			"repeat":False,
 			"match":fr"(?<={separator}|[.]){valid_name}(?=[\t ]*[(])",
@@ -486,14 +501,36 @@ replacements = [
 				{
 					"repeat":False,
 					"inverted":True,
-					"match":"_",# Split on underscore
-					"replacement_f":to_pascal
+					"match":fr"_",# Split on underscore
+					"replacement_f":lambda t,m : to_pascal(t)
 				},
 				{
 					"repeat":False,
-					"replacement":[fr"_",fr""]
+					"replacement":[fr"(?<!^_*)_",fr""]
 				}
 			]
+		},
+		{ # Rename all fields, local variables
+			"repeat":False,
+			"match":match_field_declaration,
+			"children":{
+				"Name":[
+					{
+						"requirement":lambda : rename_vars != 0,
+						"repeat":False,
+						"match":fr"(?!_).*",# ignore leading underscores
+						"replacement_f": lambda t,m : snake_to_camel(t)
+					}
+				],
+				"Prefixes":[
+					{
+						"repeat":False,
+						"replacement":[fr"^(?![\s\S]*((\s|^){access_modifiers}(\s|$)))","public "], # If no public/private/protected
+						#"replacement_f":lambda f,a : print("Pref " + f) or f
+					}
+				]
+			},
+			#"replacement_f":lambda t,m : print("Full" , t) or t,
 		},
 	]
 }
@@ -646,23 +683,63 @@ def strip_duplicate_groups(reg):
 # Regex search flags. Multiline allows the use of ^ for the beginning of a line and $ for the end.
 flags = regex.MULTILINE or regex.GLOBAL_FLAGS
 
+# v:String text value
+# obj
+# m : regex.Match
+def _object_replace_child_call(v: str, obj: object, m: regex.regex = None) -> str:
 
-def _object_replace_child_call(v,obj):
-
+	
 
 	if not 'children' in obj:
 		obj['children'] = []
 
-	for child in obj['children'] : 
-		v = _try_replace(v,child); 
-
-
+	if type(obj['children']) == list:
+		for child in obj['children'] : 
+			v = _try_replace(v,child); 
+	else: # Dictionary
+		#cache = {}
+		if m == None:
+			print("ERROR : Named Childgroups are only valid if parent is not inverted or otherwise transformed in a way that loses well defined groups.")
+			for key,child in obj['children'].items() :
+				v = _try_replace(v,child); 
+		else:
+			start = m.start(0)
+			end = m.end(0)
+			#print([method_name for method_name in dir(m) if callable(getattr(m, method_name))])
+			cache = [] # Split the string into its groups and ungrouped segments individually so each replacement affects only its matched parts. Combine them later and don't worry about indices.
+			cache_names = {} # name to cache index
+			prev_i = 0
+			for k in m.groupdict().keys():
+				if k not in obj['children'].keys():
+					continue
+				#print('checking ', k, " ", m.start(k), m.end(k),v[m.start(k)-start:m.end(k)-start])
+				cache.append(v[prev_i:m.start(k)-start]) # Potentially unnamed matched segment
+				cache_names[k] = len(cache)
+				cache.append(v[m.start(k)-start:m.end(k)-start]) # Named matched segment
+				prev_i = m.end(k)-start
+			cache.append(v[prev_i:len(v)]) # Potentially unnamed matched segment
+			for key,child in obj['children'].items() :
+				#
+				#cache[key] = _try_replace(v[m.start(key):m.end(key)]
+				#print(cache)
+				#print("Repl ", key, " " ,cache, " vs ", cache_names[key])
+				for c in child:
+					#print("A")
+					cache[cache_names[key]] = _try_replace(cache[cache_names[key]],c);
+					#print("B")
+				
+			#print("from " , v)
+			v = "".join(cache); # Recombine all grouped and ungrouped segments
+			#print("to " , v)
+	
+	
 	if 'replacement' in obj:
 		v = _try_replace(v,obj['replacement'],obj.get('repeat',True));
 
-
+	
 	if 'replacement_f' in obj:
-		v = obj['replacement_f'](v);
+		v = obj['replacement_f'](v,m);
+
 
 
 	return v
@@ -675,19 +752,18 @@ def object_replace(obj,text):
 	match = obj['match'] if 'match' in obj else False;
 	
 	if not match:
-		match = r"[\s\S]*" # Match anything
+		match = r"^[\s\S]*$" # Match anything
 	else:
 		match = strip_duplicate_groups(match);
 	
 	inverted = obj['inverted'] if 'inverted' in obj else False
-	if not inverted:
-		text = regex.subf(match,lambda v: _object_replace_child_call(v.group(0),obj),text,0,flags)
-	else:
-		matches = regex.finditer(match,text,flags)
+	
+	matches = regex.finditer(match,text,flags)
+	result = ""
+	if inverted:
 		prev_i = 0
-		result = ""
 		for m in matches:
-			# print(m)
+			#print(m.captures())
 			# print(text[prev_i:m.start()])
 			# print(m.group(0))
 			result += _object_replace_child_call(text[prev_i:m.start()],obj) + m.group(0)
@@ -695,7 +771,22 @@ def object_replace(obj,text):
 
 
 		result += _object_replace_child_call(text[prev_i:len(text)],obj)
-		text = result
+	else:
+		prev_i = 0
+		match_group = 0
+		if "match_group" in obj:
+				match_group = obj["match_group"]
+		#print(matches)
+		for m in matches:
+			result += text[prev_i:m.start(match_group)] + _object_replace_child_call(m.group(match_group),obj,m)
+
+			prev_i = m.end(match_group)
+		result += text[prev_i:len(text)]
+		#print("D")
+		#result = regex.subf(match,lambda v: _object_replace_child_call(v.group(0),obj,m),text,0,flags)
+
+
+	text = result
 
 	return text;
 
@@ -731,6 +822,7 @@ def _try_replace(text,replacer,repeat = None):
 	if repeat == None:
 		repeat = not "repeat" in replacer or replacer["repeat"]
 
+
 	orig_text = text;
 	while True:
 		prev_text = text
@@ -745,9 +837,7 @@ def _try_replace(text,replacer,repeat = None):
 				#print('repl1 ', replacer[1])
 				#print('t ', text)
 				text = regex.sub(replacement, replacer[1], text,0,flags)
-				if replacer[1] == fr"\0":
-					print(prev_text)
-					print(text)
+				
 				#print('str ', replacer[1])
 			elif isinstance(replacer[0],list): # Is array
 				text = array_replace(replacer[0],replacer[1],text)
@@ -756,11 +846,10 @@ def _try_replace(text,replacer,repeat = None):
 				print("ERROR")
 
 		if not repeat:
-			#print('break repeat')
 			break;
 		#print('continue ', repeat, replacer);
 		if text == prev_text: # Repeatedly apply same operation until no more changes occur.
-				break;
+			break;
 		if len(text) > (len(orig_text) * 10 + 1000):
 			print(replacer)
 			print("SIZE GREW 10x, PRESUMED INFINITE BLOAT, ABORTING!")

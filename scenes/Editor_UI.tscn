@@ -37,72 +37,94 @@ __meta__ = {
 
 [node name="LeftRightSplit" type="HSplitContainer" parent="VBoxContainer/TopBottomSplit"]
 margin_right = 726.0
-margin_bottom = 276.0
+margin_bottom = 299.0
 size_flags_stretch_ratio = 3.0
 
 [node name="Panel_L" type="VBoxContainer" parent="VBoxContainer/TopBottomSplit/LeftRightSplit"]
-margin_right = 357.0
-margin_bottom = 276.0
+margin_right = 318.0
+margin_bottom = 299.0
 size_flags_horizontal = 3
 size_flags_vertical = 3
 
 [node name="SelectInput" type="Button" parent="VBoxContainer/TopBottomSplit/LeftRightSplit/Panel_L"]
-margin_right = 357.0
+margin_right = 318.0
 margin_bottom = 20.0
 hint_tooltip = "Select one or more gd script files to convert to c#. The output path will automatically be derived from your regex terms (right hand panel)."
 text = "Select Input"
 
 [node name="Files" type="ScrollContainer" parent="VBoxContainer/TopBottomSplit/LeftRightSplit/Panel_L"]
 margin_top = 24.0
-margin_right = 357.0
-margin_bottom = 276.0
+margin_right = 318.0
+margin_bottom = 299.0
 size_flags_horizontal = 3
 size_flags_vertical = 3
 
 [node name="Files" type="VBoxContainer" parent="VBoxContainer/TopBottomSplit/LeftRightSplit/Panel_L/Files"]
-margin_right = 357.0
-margin_bottom = 252.0
+margin_right = 318.0
+margin_bottom = 275.0
 size_flags_horizontal = 3
 size_flags_vertical = 3
 
 [node name="Panel_R" type="VBoxContainer" parent="VBoxContainer/TopBottomSplit/LeftRightSplit"]
-margin_left = 369.0
+margin_left = 330.0
 margin_right = 726.0
-margin_bottom = 276.0
+margin_bottom = 299.0
 size_flags_horizontal = 3
 size_flags_vertical = 3
 
 [node name="PyEx" type="HBoxContainer" parent="VBoxContainer/TopBottomSplit/LeftRightSplit/Panel_R"]
-margin_right = 357.0
+margin_right = 396.0
 margin_bottom = 24.0
 
 [node name="Label" type="Label" parent="VBoxContainer/TopBottomSplit/LeftRightSplit/Panel_R/PyEx"]
 margin_top = 5.0
-margin_right = 176.0
+margin_right = 196.0
 margin_bottom = 19.0
 size_flags_horizontal = 3
 text = "Python Executable"
 
 [node name="PythonExecutable" type="LineEdit" parent="VBoxContainer/TopBottomSplit/LeftRightSplit/Panel_R/PyEx"]
-margin_left = 180.0
-margin_right = 357.0
+margin_left = 200.0
+margin_right = 396.0
 margin_bottom = 24.0
 hint_tooltip = "Path variable or direct path to the python executable. On most systems this is either py, python, python3 or python2. If any of those worked, this field should be prefilled automatically."
 size_flags_horizontal = 3
 text = "py"
 
-[node name="AddRR" type="Button" parent="VBoxContainer/TopBottomSplit/LeftRightSplit/Panel_R"]
+[node name="RenameOptions" type="HBoxContainer" parent="VBoxContainer/TopBottomSplit/LeftRightSplit/Panel_R"]
 margin_top = 28.0
-margin_right = 357.0
-margin_bottom = 48.0
+margin_right = 396.0
+margin_bottom = 68.0
+
+[node name="RenameVariables" type="CheckButton" parent="VBoxContainer/TopBottomSplit/LeftRightSplit/Panel_R/RenameOptions"]
+margin_right = 194.0
+margin_bottom = 40.0
+hint_tooltip = "WIP
+If ON, automatically rename all variables to PascalCase or camelCase, away from _ separation."
+size_flags_horizontal = 3
+text = "Rename Variables"
+
+[node name="RenameFunctions" type="CheckButton" parent="VBoxContainer/TopBottomSplit/LeftRightSplit/Panel_R/RenameOptions"]
+margin_left = 198.0
+margin_right = 396.0
+margin_bottom = 40.0
+hint_tooltip = "If ON, automatically rename all methods and function calls to PascalCase. This includes methods bound to unknown types, which may be gd, which may be in error."
+size_flags_horizontal = 3
+pressed = true
+text = "Rename Functions"
+
+[node name="AddRR" type="Button" parent="VBoxContainer/TopBottomSplit/LeftRightSplit/Panel_R"]
+margin_top = 72.0
+margin_right = 396.0
+margin_bottom = 92.0
 hint_tooltip = "Add a new Regex Rename operation.
-These get executed sequentially. The output file name will also determine the c# class name."
+These get executed sequentially on the file output name. The output file name will also determine the c# class name."
 text = "Add Rename Rule (Regex sub)"
 
 [node name="NameRepl" type="ScrollContainer" parent="VBoxContainer/TopBottomSplit/LeftRightSplit/Panel_R"]
-margin_top = 52.0
-margin_right = 357.0
-margin_bottom = 252.0
+margin_top = 96.0
+margin_right = 396.0
+margin_bottom = 275.0
 size_flags_horizontal = 3
 size_flags_vertical = 3
 __meta__ = {
@@ -110,36 +132,36 @@ __meta__ = {
 }
 
 [node name="NameReplace" type="VBoxContainer" parent="VBoxContainer/TopBottomSplit/LeftRightSplit/Panel_R/NameRepl"]
-margin_right = 357.0
-margin_bottom = 200.0
+margin_right = 396.0
+margin_bottom = 179.0
 size_flags_horizontal = 3
 size_flags_vertical = 3
 
 [node name="ReplaceElement" parent="VBoxContainer/TopBottomSplit/LeftRightSplit/Panel_R/NameRepl/NameReplace" instance=ExtResource( 1 )]
-margin_right = 357.0
+margin_right = 396.0
 
 [node name="HBoxContainer" type="HBoxContainer" parent="VBoxContainer/TopBottomSplit/LeftRightSplit/Panel_R"]
-margin_top = 256.0
-margin_right = 357.0
-margin_bottom = 276.0
+margin_top = 279.0
+margin_right = 396.0
+margin_bottom = 299.0
 
 [node name="ApplyRename" type="Button" parent="VBoxContainer/TopBottomSplit/LeftRightSplit/Panel_R/HBoxContainer"]
-margin_right = 176.0
+margin_right = 196.0
 margin_bottom = 20.0
 hint_tooltip = "Apply the full renaming stack to ALL output file paths. This will not automatically reset them to their input file paths, since with a proper matcher nothing should match twice."
 size_flags_horizontal = 3
 text = "Apply Path Renames"
 
 [node name="ResetNames" type="Button" parent="VBoxContainer/TopBottomSplit/LeftRightSplit/Panel_R/HBoxContainer"]
-margin_left = 180.0
-margin_right = 357.0
+margin_left = 200.0
+margin_right = 396.0
 margin_bottom = 20.0
 hint_tooltip = "Reset all output paths to their input value."
 size_flags_horizontal = 3
 text = "Reset Outputs"
 
 [node name="Console" type="Panel" parent="VBoxContainer/TopBottomSplit"]
-margin_top = 288.0
+margin_top = 311.0
 margin_right = 726.0
 margin_bottom = 311.0
 size_flags_horizontal = 3
@@ -190,7 +212,6 @@ __meta__ = {
 }
 
 [node name="NoPythonDialog" type="WindowDialog" parent="."]
-visible = true
 margin_left = 90.0
 margin_top = 131.0
 margin_right = 453.0
@@ -269,7 +290,6 @@ __meta__ = {
 }
 
 [node name="NoRegexDialog" type="WindowDialog" parent="."]
-visible = true
 margin_left = 90.0
 margin_top = 131.0
 margin_right = 453.0
