@@ -1,5 +1,5 @@
 [![Donate](https://img.shields.io/badge/Donate-PayPal-green.svg)](https://www.paypal.com/donate?hosted_button_id=SP5PDHLKEMYFW)<br><br>
-![](/icon.svg)
+![](/icon_raw.svg)
 # gd2cs.py
 Regex based Python script that converts arbitrary gdscript code to C#<br>
 Wrapped in a graphical UI plugin for use in the Godot Editor.<br>
