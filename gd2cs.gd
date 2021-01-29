@@ -28,7 +28,7 @@ func print_to_console(text:String,color:Color = Color.white)->Label:
 	 
 	get_console().add_child(line)
 	return line 
-	
+	 
 
 # TODO : Find FileSystem's context meny by searching for its default elements
 #func search(node:Node):
@@ -47,22 +47,28 @@ func do_conversion():
 	
 	var files = get_files()
 	var executable = popup.find_node('PythonExecutable').text
+	var rename_vars = popup.find_node("RenameVariables").pressed;
+	var rename_funcs = popup.find_node("RenameFunctions").pressed;
 	var remove_res = RegEx.new()
 	remove_res.compile("^res://")
 	for file in files:
-		
 		if ProjectSettings.globalize_path(file[0]) == ProjectSettings.globalize_path(file[1]):
 			print_to_console("Error: Input file path is equivalent to output file path. " + file[0] + " . SKIPPED!",Color.red)
 			continue 
 		
 		file[0] = remove_res.sub(file[0],"")
 		file[1] = remove_res.sub(file[1],"")
-		run_os_code(executable, ["addons/gd2cs.py/gd2cs.py","-i",file[0],"-o",file[1]])
-		get_editor_interface().get_resource_filesystem().update_file(file[1])
+		var params = ["addons/gd2cs.py/gd2cs.py","-i",file[0],"-o",file[1]]
+		if rename_funcs:
+			params.append("--rename_functions")
+		if rename_vars:
+			params.append("--rename_variables")
+		run_os_code(executable, params)
+		get_editor_interface().get_resource_filesystem().update_file(file[1]) 
 		
 func run_os_code(executable:String,params:Array):
 	var output = [];
-	var return_code = OS.execute(executable,params,true,output)
+	var return_code = OS.execute(executable,params,true,output,true)
 	if return_code != 0 : 
 		print_to_console("ERROR : Python exited with code " + str(return_code), Color.red)
 	for out in output:
@@ -116,7 +122,7 @@ func add_input():
 func add_rename_rule():
 	var rename_list = get_regex_container();
 	var child_node : Node = load("res://addons/gd2cs.py/scenes/ReplaceElement.tscn").instance();
-	rename_list.add_child(child_node);
+	rename_list.add_child(child_node); 
 		
 func reset_outputs(): 
 	var files = get_files()
