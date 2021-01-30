@@ -55,6 +55,7 @@ func do_conversion():
 			params.append("--rename_functions")
 		if rename_vars:
 			params.append("--rename_variables")
+		params.append("--is_not_console") # So any input action leads to quit
 		run_os_code(executable, params)
 		get_editor_interface().get_resource_filesystem().update_file(file[1]) 
 

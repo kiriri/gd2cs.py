@@ -8,7 +8,6 @@ __copyright__ = "Copyright 2021, Sven Hollesen"
 __license__ = "GNU General Public License v3.0"
 __version__ = "1.0.0"
 
-import click
 import os
 import math
 import sys
@@ -22,6 +21,7 @@ outname = "Output.cs"
 strip_tabs = 4 # Replace 4 subsequent spaces at the beginning of a line with a tab so offset patterns can match them. Applied before all other patterns.
 rename_functions = 0; # Rename all function calls and declarations
 rename_vars = 0; # Rename all fields and local variables and accessed variables (of the first degree only, because it's impossible to know if a gd script was referenced) 
+is_console = True
 
 # Read console arguments : 
 i = 0
@@ -44,6 +44,8 @@ while i < len(sys.argv):
 			rename_functions = 1
 		elif arg == '--rename_variables':
 			rename_vars = 1
+		elif arg == '--is_not_console':
+			is_console = False
 		i+=1
 
 if not filename.endswith(".gd"):
@@ -54,12 +56,46 @@ if not outname.endswith(".cs"):
 	outname = filename + ".cs"
 
 
+# Src : https://stackoverflow.com/questions/3041986/apt-command-line-interface-like-yes-no-input
+def query_yes_no(question, default="yes"):
+	"""Ask a yes/no question via raw_input() and return their answer.
+
+	"question" is a string that is presented to the user.
+	"default" is the presumed answer if the user just hits <Enter>.
+		It must be "yes" (the default), "no" or None (meaning
+		an answer is required of the user).
+
+	The "answer" return value is True for "yes" or False for "no".
+	"""
+	valid = {"yes": True, "y": True, "ye": True,
+			 "no": False, "n": False}
+	if default is None:
+		prompt = " [y/n] "
+	elif default == "yes":
+		prompt = " [Y/n] "
+	elif default == "no":
+		prompt = " [y/N] "
+	else:
+		raise ValueError("invalid default answer: '%s'" % default)
+	
+	while True:
+		sys.stdout.write(question + prompt)
+		if not is_console:
+			quit() # Cannot take input if not in console
+		choice = raw_input().lower()
+		if default is not None and choice == '':
+			return valid[default]
+		elif choice in valid:
+			return valid[choice]
+		else:
+			sys.stdout.write("Please respond with 'yes' or 'no' (or 'y' or 'n').\n")
+
 
 # regex module required, install if not already.
 try:
   import regex
 except ImportError:
-	if click.confirm('This Script requires the regex package. Install?', default=True):
+	if query_yes_no('This Script requires the regex package. Install?'):
 		subprocess.check_call([sys.executable,"-m","pip","install","regex"])
 	else:
 		quit()
@@ -175,8 +211,8 @@ def to_camel(text):
 	return (text[0].lower() + text[1:]) if len(text) > 0 else text;
 
 def snake_to_camel(text):
-    components = text.split('_')
-    return components[0] + ''.join(x.title() for x in components[1:])
+	components = text.split('_')
+	return components[0] + ''.join(x.title() for x in components[1:])
 
 def const_to_pascal(text):
 	return (text[0].upper() + text[1:].lower()) if len(text) > 0 else text;
