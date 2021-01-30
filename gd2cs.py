@@ -193,6 +193,33 @@ def rename_field(text):
 def rename_local_var(text):
 	return text;
 
+variable_replacements = [ # Anything that uses case conversions happens in the actual replacements array
+	["PI","Mathf.Pi"],
+	["TAU","Mathf.Tau"],
+	["INF","Mathf.Inf"],
+	["NAN","Mathf.NaN"],
+	["self","this"],
+	["TYPE_ARRAY","typeof(Array)"],
+	["TYPE_BOOL","typeof(bool)"],
+	["TYPE_COLOR","typeof(Color)"],
+	["TYPE_DICTIONARY","typeof(Dictionary)"],
+	["TYPE_INT","typeof(int)"],
+	["TYPE_NIL","null"],
+	["TYPE_OBJECT","typeof(Godot.Object)"],
+	["TYPE_REAL","typeof(float)"], # TODO : Is this float or double?
+	["TYPE_RECT2","typeof(Rect2)"],
+	["TYPE_RID","typeof(RID)"],
+	["TYPE_STRING","typeof(string)"],
+	["TYPE_VECTOR2","typeof(Vector2)"],
+]
+
+
+
+def rename_builtin_vars(text):
+	for pair in variable_replacements:
+		pair[0] = fr"(?<={separator})(?<![.])" + pair[0] + fr"(?={separator})(?!\()";
+		text = regex.sub(pair[0], pair[1], text,0,flags)
+	return text
 
 
 #  def match_inverse(pattern): # May not be so simple
@@ -330,8 +357,8 @@ replacements = [
 						{# autocomplete function arguments via default values (new T)
 							"replacement":[fr"(?<=[,(]\s*?)(?P<A>{valid_name}\s*=\s*new\s+(?P<Name>{full_name}))",fr"\g<Name> \g<A>"]
 						},
-						{# autocomplete function arguments without any implicit or explicit type hinting. Use __TYPE__ to denote user input being required.
-							"replacement":[fr"(?<=[,(]\s*?)(?P<A>{valid_name}\s*)(?=\s*[=,)])",fr"__TYPE__ \g<A>"]
+						{# autocomplete function arguments without any implicit or explicit type hinting. Use __TYPE to denote user input being required.
+							"replacement":[fr"(?<=[,(]\s*?)(?P<A>{valid_name}\s*)(?=\s*[=,)])",fr"__TYPE \g<A>"]
 						}
 					]
 				},
@@ -346,7 +373,7 @@ replacements = [
 					],
 					
 				},
-				{ # Set return type to void if no return __TYPE__; exists
+				{ # Set return type to void if no return __TYPE; exists
 					"repeat":False,
 					"match":fr"{t0}(?![\w\W]*(?<!\/\/[^\n]*)return[ \t]+{valid_term}[\w\W]*)[\w\W]*", # Skip if the function contains a valued return, else continue in full
 					"children":[
@@ -358,7 +385,7 @@ replacements = [
 				},
 				{ # Method doesnt have a valid return type
 					"repeat":False,
-					"replacement":[fr"(?<=(^|\s)({func_prefix})+)[\t ]*(?=[\t ]*{valid_name}[ \t]*\()",fr" __TYPE__ "],
+					"replacement":[fr"(?<=(^|\s)({func_prefix})+)[\t ]*(?=[\t ]*{valid_name}[ \t]*\()",fr" __TYPE "],
 					#"replacement_f":lambda v: v
 				}
 			],
@@ -453,7 +480,7 @@ replacements = [
 			"inverted":True,
 			"match":match_full_function_cs,
 			"children":[
-				[fr"(?<=[\n;][\t ]*)var(?=[\t ]+{valid_name}[\t ]*(=|\n|;))",fr"__TYPE__"], # must have a well defined type. Replace var with __TYPE__ to notify user this needs to be defined manually.
+				[fr"(?<=[\n;][\t ]*)var(?=[\t ]+{valid_name}[\t ]*(=|\n|;))",fr"__TYPE"], # must have a well defined type. Replace var with __TYPE to notify user this needs to be defined manually.
 				[fr"(?<=[\n;][\t ]*)(?!.*{access_modifiers})(?=({field_prefix}[\t ]*)*{full_name}[\t ]+[a-zA-Z]{valid_name}?[\t ]*(=|\n|;|setget))","public "],
 				[fr"(?<=[\n;][\t ]*)(?!.*{access_modifiers})(?=({field_prefix}[\t ]*)*{full_name}[\t ]+{valid_name}[\t ]*(=|\n|;|setget))","private "], # Private if it starts with _ or other weird character
 
@@ -469,7 +496,7 @@ replacements = [
 			"children":[
 				{
 					"match":fr"(?<=PROPERTY_USAGE_).*", # First turn to PascalCase
-					"replacement_f":lambda t: regex.subf(fr"[A-Z]+",lambda s: const_to_pascal(s.group(0)),t,0,flags),
+					"replacement_f":lambda t,m: regex.subf(fr"[A-Z]+",lambda s: const_to_pascal(s.group(0)),t,0,flags),
 				},
 				{ # Then strip spaces
 					"replacement":["_",""],
@@ -493,6 +520,7 @@ replacements = [
 		# 	#"replacement_f": lambda v: print(v) or v
 			
 		# },
+		
 		{ # Rename all function calls and definitions
 			"requirement":lambda : rename_functions != 0,
 			"repeat":False,
@@ -510,7 +538,10 @@ replacements = [
 				}
 			]
 		},
-		{ # Rename all fields, local variables
+		{
+			"replacement_f":lambda a,b : rename_builtin_vars(a),
+		},
+		{ # Rename all fields
 			"repeat":False,
 			"match":match_field_declaration,
 			"children":{
@@ -532,6 +563,18 @@ replacements = [
 			},
 			#"replacement_f":lambda t,m : print("Full" , t) or t,
 		},
+		{ # Rename all accessed properties and local variables
+			"match":fr"(?<={separator}){valid_name}(?![\t ]*\()",
+			"children":
+			[
+				{
+					"requirement":lambda : rename_vars != 0,
+					"repeat":False,
+					"match":fr"(?!_).*",# ignore leading underscores
+					"replacement_f": lambda t,m : snake_to_camel(t)
+				}
+			]
+		}
 	]
 }
 		
@@ -636,26 +679,6 @@ function_replacements = [
 	["emit_signal","EmitSignal"],
 	["connect","Connect"],
 ];
-
-variable_replacements = [ # Anything that uses case conversions happens in the actual replacements array
-	["PI","Mathf.Pi"],
-	["TAU","Mathf.Tau"],
-	["INF","Mathf.Inf"],
-	["NAN","Mathf.NaN"],
-	["self","this"],
-	["TYPE_ARRAY","typeof(Array)"],
-	["TYPE_BOOL","typeof(bool)"],
-	["TYPE_COLOR","typeof(Color)"],
-	["TYPE_DICTIONARY","typeof(Dictionary)"],
-	["TYPE_INT","typeof(int)"],
-	["TYPE_NIL","null"],
-	["TYPE_OBJECT","typeof(Godot.Object)"],
-	["TYPE_REAL","typeof(float)"], # TODO : Is this float or double?
-	["TYPE_RECT2","typeof(Rect2)"],
-	["TYPE_RID","typeof(RID)"],
-	["TYPE_STRING","typeof(string)"],
-	["TYPE_VECTOR2","typeof(Vector2)"],
-]
 
 
 
@@ -885,9 +908,7 @@ with open(filename,'r+') as f:
 		text = _try_replace(text,pair)
 
 	
-	for pair in variable_replacements:
-		pair[0] = fr"(?<={separator})(?<![.])" + pair[0] + fr"(?={separator})(?!\()";
-		text = regex.sub(pair[0], pair[1], text,0,flags)
+
 	
 	
 

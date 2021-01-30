@@ -3,8 +3,9 @@
 [ext_resource path="res://addons/gd2cs.py/scenes/ReplaceElement.tscn" type="PackedScene" id=1]
 
 [node name="WindowDialog" type="WindowDialog"]
+visible = true
 margin_right = 742.0
-margin_bottom = 357.0
+margin_bottom = 497.0
 popup_exclusive = true
 window_title = "gd2cs.py"
 resizable = true
@@ -27,7 +28,7 @@ __meta__ = {
 
 [node name="TopBottomSplit" type="VSplitContainer" parent="VBoxContainer"]
 margin_right = 726.0
-margin_bottom = 311.0
+margin_bottom = 451.0
 size_flags_horizontal = 3
 size_flags_vertical = 3
 split_offset = 200
@@ -37,12 +38,12 @@ __meta__ = {
 
 [node name="LeftRightSplit" type="HSplitContainer" parent="VBoxContainer/TopBottomSplit"]
 margin_right = 726.0
-margin_bottom = 299.0
+margin_bottom = 320.0
 size_flags_stretch_ratio = 3.0
 
 [node name="Panel_L" type="VBoxContainer" parent="VBoxContainer/TopBottomSplit/LeftRightSplit"]
 margin_right = 318.0
-margin_bottom = 299.0
+margin_bottom = 320.0
 size_flags_horizontal = 3
 size_flags_vertical = 3
 
@@ -55,20 +56,20 @@ text = "Select Input"
 [node name="Files" type="ScrollContainer" parent="VBoxContainer/TopBottomSplit/LeftRightSplit/Panel_L"]
 margin_top = 24.0
 margin_right = 318.0
-margin_bottom = 299.0
+margin_bottom = 320.0
 size_flags_horizontal = 3
 size_flags_vertical = 3
 
 [node name="Files" type="VBoxContainer" parent="VBoxContainer/TopBottomSplit/LeftRightSplit/Panel_L/Files"]
 margin_right = 318.0
-margin_bottom = 275.0
+margin_bottom = 296.0
 size_flags_horizontal = 3
 size_flags_vertical = 3
 
 [node name="Panel_R" type="VBoxContainer" parent="VBoxContainer/TopBottomSplit/LeftRightSplit"]
 margin_left = 330.0
 margin_right = 726.0
-margin_bottom = 299.0
+margin_bottom = 320.0
 size_flags_horizontal = 3
 size_flags_vertical = 3
 
@@ -124,7 +125,7 @@ text = "Add Rename Rule (Regex sub)"
 [node name="NameRepl" type="ScrollContainer" parent="VBoxContainer/TopBottomSplit/LeftRightSplit/Panel_R"]
 margin_top = 96.0
 margin_right = 396.0
-margin_bottom = 275.0
+margin_bottom = 296.0
 size_flags_horizontal = 3
 size_flags_vertical = 3
 __meta__ = {
@@ -133,7 +134,7 @@ __meta__ = {
 
 [node name="NameReplace" type="VBoxContainer" parent="VBoxContainer/TopBottomSplit/LeftRightSplit/Panel_R/NameRepl"]
 margin_right = 396.0
-margin_bottom = 179.0
+margin_bottom = 200.0
 size_flags_horizontal = 3
 size_flags_vertical = 3
 
@@ -141,9 +142,9 @@ size_flags_vertical = 3
 margin_right = 396.0
 
 [node name="HBoxContainer" type="HBoxContainer" parent="VBoxContainer/TopBottomSplit/LeftRightSplit/Panel_R"]
-margin_top = 279.0
+margin_top = 300.0
 margin_right = 396.0
-margin_bottom = 299.0
+margin_bottom = 320.0
 
 [node name="ApplyRename" type="Button" parent="VBoxContainer/TopBottomSplit/LeftRightSplit/Panel_R/HBoxContainer"]
 margin_right = 196.0
@@ -161,9 +162,9 @@ size_flags_horizontal = 3
 text = "Reset Outputs"
 
 [node name="Console" type="Panel" parent="VBoxContainer/TopBottomSplit"]
-margin_top = 311.0
+margin_top = 332.0
 margin_right = 726.0
-margin_bottom = 311.0
+margin_bottom = 451.0
 size_flags_horizontal = 3
 
 [node name="ScrollContainer" type="ScrollContainer" parent="VBoxContainer/TopBottomSplit/Console"]
@@ -180,19 +181,27 @@ __meta__ = {
 
 [node name="VBoxContainer" type="VBoxContainer" parent="VBoxContainer/TopBottomSplit/Console/ScrollContainer"]
 margin_right = 718.0
-margin_bottom = 20.0
+margin_bottom = 111.0
 size_flags_horizontal = 3
 size_flags_vertical = 3
 
-[node name="ConvertButton" type="Button" parent="."]
+[node name="HBoxContainer" type="HBoxContainer" parent="."]
 anchor_top = 1.0
 anchor_right = 1.0
 anchor_bottom = 1.0
-margin_left = 8.0
+margin_left = 6.0
 margin_top = -28.0
 margin_right = -8.0
 margin_bottom = -8.0
+__meta__ = {
+"_edit_use_anchors_": false
+}
+
+[node name="ConvertButton" type="Button" parent="HBoxContainer"]
+margin_right = 728.0
+margin_bottom = 20.0
 hint_tooltip = "Start the conversion. This may take  a while, especially if you have individually large code files."
+size_flags_horizontal = 3
 text = "Convert"
 __meta__ = {
 "_edit_use_anchors_": false
