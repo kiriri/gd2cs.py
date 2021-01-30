@@ -2,15 +2,7 @@ tool
 extends EditorPlugin
 
 var popup:WindowDialog
-var file_dialogue
-var input_list : VBoxContainer
-var python_executable : LineEdit
-var output_pattern_A : LineEdit
-var output_pattern_B : LineEdit
-var output_to_pascal : CheckButton
-
-var enabled = false;
-
+var enabled := false;
 
 func get_files_container():
 	return popup.get_node("VBoxContainer/TopBottomSplit/LeftRightSplit/Panel_L/Files/Files");
@@ -25,8 +17,8 @@ func print_to_console(text:String,color:Color = Color.white)->Label:
 	var line = Label.new()
 	line.text = text;  
 	line.self_modulate = color;
-	 
 	get_console().add_child(line)
+	
 	return line 
 	 
 
@@ -65,7 +57,8 @@ func do_conversion():
 			params.append("--rename_variables")
 		run_os_code(executable, params)
 		get_editor_interface().get_resource_filesystem().update_file(file[1]) 
-		
+
+# Run OS/shell code. Print results and errors to console
 func run_os_code(executable:String,params:Array):
 	var output = [];
 	var return_code = OS.execute(executable,params,true,output,true)
@@ -86,9 +79,6 @@ func get_files()->Array:
 		var output = node.find_node("Output").text;
 		result.append([input,output,node])
 	return result;
-		
-func files_selected(values):
-	print(values);
 
 # Prompt the user to select gd files
 func select_files()->Array:
@@ -102,8 +92,6 @@ func input_to_output(input:String)->String:
 	var name_replace = get_regex_container()
 	for child in name_replace.get_children():
 		var r = RegEx.new()
-		
-		
 		r.compile(child.find_node("ReplaceMatch").text);
 		input = r.sub(input,child.find_node("ReplaceSub").text,true);
 	return input
@@ -116,23 +104,24 @@ func add_input():
 		var child_node : Node = load("res://addons/gd2cs.py/scenes/FileElement.tscn").instance()
 		child_node.find_node("Input").text = child
 		child_node.find_node("Output").text = input_to_output(child)
-		#child_node.find_node("RemoveButton").connect("button_up",self,"remove_input",[child_node])
 		inputs_list.add_child(child_node);
-		
+
+# Add a new rename rule
 func add_rename_rule():
 	var rename_list = get_regex_container();
 	var child_node : Node = load("res://addons/gd2cs.py/scenes/ReplaceElement.tscn").instance();
 	rename_list.add_child(child_node); 
-		
+
+# Set all output paths to their corresponding input paths
+# The python will automatically add a .cs if none exists at the end of the name,
+# So overwriting the source gd file should be impossible
 func reset_outputs(): 
 	var files = get_files()
 	for file in files:
 		var node = file[2];
 		node.find_node("Output").text = file[0] 
-	
-	
-	
-	
+
+# Apply the regex rename to all output file paths
 func rename_all():
 	var files = get_files()
 	for file in files:
@@ -142,7 +131,6 @@ func rename_all():
 
 # Check all common path aliases for the python executable. Prefer python3 over python2.
 func get_best_python_exec():
-
 	if ProjectSettings.has_setting("gd2cs/config/python"):
 		var exec = ProjectSettings.get_setting("gd2cs/config/python")
 		if not exec in ["null",""]:
@@ -168,16 +156,20 @@ func change_python_exec(val):
 func set_ask_no_python(val):
 	ProjectSettings.set_setting("gd2cs/config/ask_no_python",not val)
 
+# Download python. For now, open a download url. Still debating on whether
+# an auto-install would be appreciated here...
 func download_python():
 	OS.shell_open("https://www.python.org/downloads/")
 	popup.find_node("NoPythonDialog").hide()	
 	popup.hide()
-	
+
+# Install the regex python module. This happens automatically in the background via pip.
 func install_regex():
 	run_os_code(ProjectSettings.get_setting("gd2cs/config/python"),["-m","pip","install","regex"])
 	popup.find_node("NoRegexDialog").hide()
 	do_conversion()
 
+# Called if the Project->Tools->gd2cs button is clicked. Opens the popup.
 func callback(ud):  
 	if not popup : 
 		popup = load("res://addons/gd2cs.py/scenes/Editor_UI.tscn").instance();
@@ -196,13 +188,12 @@ func callback(ud):
 	
 	popup.find_node('PythonExecutable').text = get_best_python_exec()
 	popup.popup_centered(Vector2(800,600));
-	
+
 func _enter_tree():
 	enabled = true;
 	if not ProjectSettings.has_setting("gd2cs/config/ask_no_python"):
 		ProjectSettings.set_setting("gd2cs/config/ask_no_python",true)
 	add_tool_menu_item("gd2cs", self, "callback")
-	
 	
 func _exit_tree():
 	enabled = false;
