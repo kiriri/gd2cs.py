@@ -520,7 +520,9 @@ replacements = [
 		# 	#"replacement_f": lambda v: print(v) or v
 			
 		# },
-		
+		{
+			"replacement": [fr"({full_name}).new\(\)",fr"new \1()"] # Should match valid_term instead of full_name, but that wouldn't take op precedence into account, so use full_name for the time being until a weak valid term alternative is defined ( TODO )
+		},
 		{ # Rename all function calls and definitions
 			"requirement":lambda : rename_functions != 0,
 			"repeat":False,
