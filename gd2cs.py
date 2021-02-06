@@ -109,9 +109,7 @@ except ImportError:
 # Nested Dictionaries generate excessive/invalid semicolons
 
 
-# TODO : children as dictionary, key as match_group, value as array (Otherwise ambiguous with array replacement)
-# TODO : Replace X.new(...) with new X(...)
-# TODO : 
+# TODO : $Path => GetNode()
 # TODO : Rename Functions => All defined in this class or any variable that is or instances any of these types https://docs.godotengine.org/en/3.2/classes/index.html
 # TODO : Rename Vars
 # TODO : Turn all final regex into lexical words
@@ -188,6 +186,7 @@ match_full_function_cs = fr"(?P<A>[\t ]*)({func_prefix}[\t ]+)*(?P<R_Type>{full_
 match_type_hinting = fr"(?<!\/\/.*)(?<={valid_name}[\t ]*\( *.*)(?P<Name>{valid_name})[\t ]*:[\t ]*(?P<Type>{valid_name})"
 match_function_arguments = fr"(?<=^\s*({func_prefix}[\t ]+)*{access_modifiers}+[\t ]+({valid_name}[\t ]+)?{valid_name}[\t ]*){match_braces}"
 match_function_header = fr"(?<=^\s*)(?P<AccessModifiers>({func_prefix}[\t ]+)*{access_modifiers}+)[\t ]+((?P<Type>{valid_name})[\t ]+)?(?P<Name>{valid_name})[\t ]*(?P<Args>{match_braces})"
+match_gd_node_path = fr"(\$(?P<Path>{valid_name}(\/{valid_name})*))"
 
 # Default imports and aliases that almost every class needs.
 header = """
@@ -340,6 +339,10 @@ replacements = [
 					"children":[
 						{
 							"replacement":[fr"#",fr"//"]# Single line comments from # to //
+						},
+						{
+							"replacement":[match_gd_node_path,fr'GetNode("\g<Path>")'],
+							"replacement_f":lambda a,b:print(a) or a
 						}
 
 					]
