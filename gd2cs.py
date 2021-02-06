@@ -133,7 +133,7 @@ separator = fr"([{{}}\[\]\s,:;=()])"
 comment_or_empty = "((^\s*\n)|(^\s*\/\/.*\n))"
 rpc = fr"(remote|master|puppet|remotesync|mastersync|puppetsync)";
 access_modifiers = fr"(public|private|protected)"
-field_prefix = fr"({access_modifiers}|override|static|const|readonly|delegate)"
+field_prefix = fr"({access_modifiers}|onready|override|static|const|readonly|delegate)"
 func_prefix = fr"({rpc}|{access_modifiers}|virtual|override|static|async|const|readonly)" # Most of these are c#
 reserved_keywords = fr"(public|static|var|const|foreach|for|while|if|else|switch|case|return|using|new)"
 valid_name = fr"([_a-zA-Z]+[_\-a-zA-Z0-9]*(?<!{reserved_keywords}))" 
