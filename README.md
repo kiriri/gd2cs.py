@@ -222,12 +222,6 @@ As you can see, it's not perfect and it will require you to manually fix the for
 
 What's next :<br>
 
-Smarter Analysis :<br> 
-
-\- Project-wide class analysis : Scan existing gd and cs scripts, extract classes, methods, fields, and use data to more accurately rename, to automatically load scripts, to infer function return types, etc <br>
-
-\- Optional automatic PascalCase conversion on all non-static variables<br>
-
 \- process entire folders (recursively)<br>
 <br>
 
