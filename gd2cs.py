@@ -127,7 +127,7 @@ separator = fr"([{{}}\[\]\s,:;=()])"
 comment_or_empty = "((^\s*\n)|(^\s*\/\/.*\n))"
 rpc = fr"(remote|master|puppet|remotesync|mastersync|puppetsync)";
 access_modifiers = fr"(public|private|protected)"
-field_prefix = fr"({access_modifiers}|onready|override|static|const|readonly|delegate)"
+
 func_prefix = fr"({rpc}|{access_modifiers}|virtual|override|static|async|const|readonly)" # Most of these are c#
 reserved_keywords = fr"(public|static|var|const|foreach|for|while|if|else|switch|case|return|using|new)"
 valid_name = fr"([_a-zA-Z]+[_\-a-zA-Z0-9]*(?<!{reserved_keywords}))" 
@@ -171,7 +171,7 @@ match_comments_old = fr"([ \t]*#.*$)"
 match_comments_new = fr"([ \t]*\/\/.*$)"
 match_eol = fr"(?<eol>({match_comments_old}|{match_comments_new}|[\t ])*?$)" # Remaining bits of the line, such as tabs, spaces, comments etc.
 getter_setter = fr"(?={{\s*(get|set)){match_curlies}" # C# getter/setter block. Only valid within match_field_declaration or similar.
-
+field_prefix = fr"({access_modifiers}|onready|override|static|const|readonly|delegate)"
 
 # FINAL lexical words (These provide fixed named output groups and therefore should not be used elsewhere)
 match_field_declaration = fr"(?<=[;\n]|{t0}[ \t]*)(?P<Attributes>(\[.*\]\s*)*)(?P<Prefixes>({field_prefix}[ \t]+)*)(?P<Type>var|const|{full_name})[ \t]+(?P<Name>{valid_name})([\t ]*:[\t ]*(?P<Type>{full_name})?)?(?=\s*[\n;=]|{getter_setter})(?![ \t]*\()";
@@ -450,8 +450,9 @@ replacements = [
 		# Unidentifiable variables const var
 		[fr"(?<={separator}const\s+)(?={valid_name}\s*:?\s*(=|setget))",r"var "], 
 		# Auto identify variables from export hints
-		[fr"(?<={separator})export\s*\(\s*(?P<T>{valid_term})\s*(,\s*(?P<A>.*?)?)\s*\)\s*(?P<B>(const\s+)?)(var|const|{full_name})(?=\s+{valid_name}\s*(=|setget))",fr"[Export(\g<A>)] \g<B> \g<T>"], # Has parameters => Can derive type
-		[fr"(?<={separator})export\s*(?P<B>(const\s+)?)(?=(var|const|{full_name})\s+{valid_name}\s*(=|setget))",fr"[Export] \g<B>"], # No parameters
+		[fr"(?<={separator})export\s*\(\s*(?P<T>{valid_term})\s*(,\s*(?P<A>.*?)?)\s*\)\s*(?P<B>(const\s+)?)(var|const|{full_name})(?=\s+{valid_name}\s*(=|setget|;))",fr"[Export(\g<A>)] \g<B> \g<T>"], # Has parameters => Can derive type
+		[fr"(?<={separator})export\s*\(\s*(?P<T>{valid_term})\s*\)\s*(?P<B>(const\s+)?)(var|const|{full_name})(?=\s+{valid_name}\s*(=|setget|;))",fr"[Export] \g<B> \g<T>"], # Has parameters => Can derive type
+		[fr"(?<={separator})export\s*(?P<B>(const\s+)?)(?=(var|const|{full_name})\s+{valid_name}\s*(=|setget|;))",fr"[Export] \g<B>"], # No parameters
 		# Auto identify bools. TODO : Also accept simple static terms such as 5*5, !true, "a" in ["a","b","c"]
 		[fr"(?<={separator})var(?=\s+{valid_name}\s*:?\s*=\s*{valid_bool}(.*))",r"bool"],
 		# Auto identify float
