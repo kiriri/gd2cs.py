@@ -124,6 +124,7 @@ any_char = "[\w\W]"
 t0 = fr"(?<!\n)^" # start of input ( Should be \A if that token exists )
 eof = fr"(?!\n)$" # end of input \z
 separator = fr"([{{}}\[\]\s,:;=()])"
+clean_separator = fr"([{{\[\n,:;=(])" # No value to the left
 comment_or_empty = "((^\s*\n)|(^\s*\/\/.*\n))"
 rpc = fr"(remote|master|puppet|remotesync|mastersync|puppetsync)";
 access_modifiers = fr"(public|private|protected)"
@@ -422,8 +423,6 @@ replacements = [
 					#"replacement_f":lambda v: v
 				}
 			],
-			
-			
 		},
 
 		## If/Else
@@ -509,7 +508,7 @@ replacements = [
 		## Cleanup
 
 		# .functionCall() => base.functionCall()
-		[fr"(?<=[\n;][ \t])(?=\.{valid_name}[\t ]*\()",fr"base"],
+		[fr"(?<={clean_separator}\s*)(?=\.{valid_name}[\t ]*\()",fr"base"],
 		{ # Any class field (~variable declaration outside of function bodies) 
 			"inverted":True,
 			"match":match_full_function_cs,
