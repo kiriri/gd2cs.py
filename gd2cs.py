@@ -21,6 +21,7 @@ outname = "Output.cs"
 strip_tabs = 4 # Replace 4 subsequent spaces at the beginning of a line with a tab so offset patterns can match them. Applied before all other patterns.
 rename_functions = 0; # Rename all function calls and declarations
 rename_vars = 0; # Rename all fields and local variables and accessed variables (of the first degree only, because it's impossible to know if a gd script was referenced) 
+refactor_onready = 0
 is_console = True
 
 # Read console arguments : 
@@ -44,6 +45,8 @@ while i < len(sys.argv):
 			rename_functions = 1
 		elif arg == '--rename_variables':
 			rename_vars = 1
+		elif arg == '--refactor_onready':
+			refactor_onready = 1
 		elif arg == '--is_not_console':
 			is_console = False
 		i+=1
@@ -182,6 +185,7 @@ match_type_hinting = fr"(?<!\/\/.*)(?<={valid_name}[\t ]*\( *.*)(?P<Name>{valid_
 match_function_arguments = fr"(?<=^\s*({func_prefix}[\t ]+)*{access_modifiers}+[\t ]+({valid_name}[\t ]+)?{valid_name}[\t ]*){match_braces}"
 match_function_header = fr"(?<=^\s*)(?P<AccessModifiers>({func_prefix}[\t ]+)*{access_modifiers}+)[\t ]+((?P<Type>{valid_name})[\t ]+)?(?P<Name>{valid_name})[\t ]*(?P<Args>{match_braces})"
 match_gd_node_path = fr"(\$(?P<Path>{valid_name}(\/{valid_name})*))"
+match_class_cs = fr"class";
 
 # Default imports and aliases that almost every class needs.
 header = """
@@ -337,7 +341,7 @@ replacements = [
 						},
 						{
 							"replacement":[match_gd_node_path,fr'GetNode("\g<Path>")'],
-							"replacement_f":lambda a,b:print(a) or a
+							#"replacement_f":lambda a,b:print(a) or a
 						}
 
 					]
@@ -425,6 +429,20 @@ replacements = [
 			],
 		},
 
+		# .functionCall() => base.functionCall()
+		[fr"(?<={clean_separator}\s*)(?=\.{valid_name}[\t ]*\()",fr"base"],
+		{ # Any class field (~variable declaration outside of function bodies) 
+			"inverted":True,
+			"match":match_full_function_cs,
+			"children":[
+				[fr"(?<=[\n;][\t ]*)var(?=[\t ]+{valid_name}[\t ]*(=|\n|;))",fr"__TYPE"], # must have a well defined type. Replace var with __TYPE to notify user this needs to be defined manually.
+				[fr"(?<=[\n;][\t ]*)(?!.*{access_modifiers})(?=({field_prefix}[\t ]*)*{full_name}[\t ]+[a-zA-Z]{valid_name}?[\t ]*(=|\n|;|setget))","public "],
+				[fr"(?<=[\n;][\t ]*)(?!.*{access_modifiers})(?=({field_prefix}[\t ]*)*{full_name}[\t ]+{valid_name}[\t ]*(=|\n|;|setget))","private "], # Private if it starts with _ or other weird character
+
+			],
+			#"replacement_f":lambda v: print("----- FUNC -----\n",v) or v
+		},
+
 		## If/Else
 		
 		# replace if/elif blocks 
@@ -507,19 +525,7 @@ replacements = [
 
 		## Cleanup
 
-		# .functionCall() => base.functionCall()
-		[fr"(?<={clean_separator}\s*)(?=\.{valid_name}[\t ]*\()",fr"base"],
-		{ # Any class field (~variable declaration outside of function bodies) 
-			"inverted":True,
-			"match":match_full_function_cs,
-			"children":[
-				[fr"(?<=[\n;][\t ]*)var(?=[\t ]+{valid_name}[\t ]*(=|\n|;))",fr"__TYPE"], # must have a well defined type. Replace var with __TYPE to notify user this needs to be defined manually.
-				[fr"(?<=[\n;][\t ]*)(?!.*{access_modifiers})(?=({field_prefix}[\t ]*)*{full_name}[\t ]+[a-zA-Z]{valid_name}?[\t ]*(=|\n|;|setget))","public "],
-				[fr"(?<=[\n;][\t ]*)(?!.*{access_modifiers})(?=({field_prefix}[\t ]*)*{full_name}[\t ]+{valid_name}[\t ]*(=|\n|;|setget))","private "], # Private if it starts with _ or other weird character
-
-			],
-			#"replacement_f":lambda v: print("----- FUNC -----\n",v) or v
-		},
+		
 		# Strip "pass", which is replaced already by (maybe empty) curlies.
 		[fr"^[\t ]*pass[\t ]*;*[\t ]*\n",""], 
 		
@@ -944,7 +950,50 @@ def process_file(filename,outname):
 		for pair in replacements:
 			text = _try_replace(text,pair)
 
-		
+		if refactor_onready:
+			onready_code_prepend = ["{"]
+			matches = regex.findall(fr"{match_field_declaration}\s*(=.*)$",text,flags)
+			for match in matches:
+				prefixes = match[3]
+				if not "onready" in prefixes:
+					continue
+				onready_code_prepend.append("\t"+match[15] + " " + match[28])
+
+			#print("Tryign replacement", onready_code_prepend)
+			# Check if _Ready or _ready exists
+
+			
+			if(0 >= len(regex.findall(fr"public void _[rR]eady\s*\(\s*\)",text))): # Insert a _Ready function if it doesn't exist yet.
+				text = "public void _Ready()\n{\t\n}\n\n" + text
+
+			# Insert all assignments into Ready function
+			text = _try_replace(text,
+			{ 
+				"repeat":False,
+				"match":fr"public void _[rR]eady\s*\(\s*\)\s*(?P<Content>{match_curlies})",
+				"children":{
+					"Content":[
+					{
+						"repeat":False,
+						"replacement":[fr"{{",str.join("\n",onready_code_prepend)],
+						#"replacement_f":lambda a,b : print(a) or a
+					}
+				],
+				},
+				#"replacement_f":lambda a,b : print(a) or a
+			}
+			)
+			
+			# TODO : Remove assignments from onready field declarations
+			print(regex.findall(fr"\sonready\s(.*)=.*;",text))
+			text = regex.sub(fr"\sonready\s(.*)=.*;",fr" \1;",text)
+
+
+			# next, remove onready keyword everywhere
+			#text = regex.sub(fr"(?<={separator})onready\s","",text)
+			
+
+			#text = _try_replace(text,)
 
 		
 		
@@ -970,8 +1019,12 @@ if not os.path.isdir(filename):
 else:
 	files = [[os.path.join(dp, f),regex.sub(fr"\.gd$",fr".cs", os.path.join(dp, f),0,flags)] for dp, dn, filenames in os.walk(filename) for f in filenames if os.path.splitext(f)[1] == '.gd'] # Find all gd files recursively, and rename them to *.cs.
 
+i = 0
+count = len(files)
 for [file_in,file_out] in files :
 	process_file(file_in,file_out)
+	i+=1
+	print("Converted " + str(i) + " out of " + str(count))
 
 
 
