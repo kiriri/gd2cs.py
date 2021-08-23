@@ -299,6 +299,7 @@ replacements = [
 		[fr"^\s*tool\s*$"," "], 
 		[fr"^\s*extends\s*.*\s*$"," "],
 		[fr"^\s*class_name\s*.*\s*$"," "], # Class Name is ignored entirely. C# Classes must be named like the file they are in.
+		[fr"\$\s*(?P<A>{valid_string_term})",fr"GetNode(\g<A>)"],
 		# Builtin constructors, like "Vector2()" => "new Vector2()"
 		[fr"(?<={separator})(?<!new\s+)(?P<A>\s*)(?P<B>{builtin_constructors})\s*\(",fr"\g<A>new \g<B>("],
 		# Turn lowest level unprocessed dictionaries. KV pairs are still of form K:V though
@@ -516,8 +517,10 @@ replacements = [
 
 		# semicolon at end of standalone terms (such as function calls) (but never after values like new T() or {valid_value})
 		[fr"(?<![,]\s*)(?<=^[ \t]*)(?!{reserved_keywords}\s*\(*)(?P<Content>{valid_term_c}[ \t]*)(?P<Comment>{match_eol})(?!\s*[{{[(])",fr"\g<Content>;\g<Comment>"], 
+		#[fr"(?<![,]\s*)(?<=^[ \t]*)(?!{reserved_keywords}\s*\(*)(?P<Content>{valid_term_c}[ \t]*)(?P<Comment>{match_eol})(?!\s*[{{[(])",fr"\g<Content>;\g<Comment>"], 
 		# semicolon after var X\n
 		[fr"(?<=var[\t ]+{valid_name})(?=[ \t]*\n)",fr";"],
+		[fr"(?<={access_modifiers}[\t ]+{full_name}[\t ]+{valid_name})(?=[ \t]*\n)",fr";"],
 		# semicolon at end of assignments TODO : Super expensive
 		[fr"((?<=^[ \t]*|((var|const|public|private|static|async|delegate|{match_brackets})[ \t])*)({valid_name}[\t ]+)?{assignable}[\t ]*[\+\-]?=[\t ]*{valid_term_c}[ \t]*)(?P<E>{match_eol})(?!\s*[{{(,])",fr"\1;\g<E>"],
 		# return statements TODO : May be surrounded by braces or curlies, which will not count as ^ or $ 
