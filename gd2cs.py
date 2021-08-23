@@ -48,12 +48,6 @@ while i < len(sys.argv):
 			is_console = False
 		i+=1
 
-if not filename.endswith(".gd"):
-	filename = filename + ".gd"
-
-
-if not outname.endswith(".cs"):
-	outname = filename + ".cs"
 
 
 # Src : https://stackoverflow.com/questions/3041986/apt-command-line-interface-like-yes-no-input
@@ -924,44 +918,62 @@ def _try_replace(text,replacer,repeat = None):
 
 	return text
 
-# Open the file in read/write mode
-with open(filename,'r+') as f:
-	text = f.read()
-	
-	print("PROCESSING -- " + filename)
+# Convert file from gd to cs
+def process_file(filename,outname):
+	# Open the file in read/write mode
+	with open(filename,'r+') as f:
+		text = f.read()
+		
+		print("PROCESSING -- " + filename)
 
-	
+		
 
-	extending = regex.findall(r"extends (.*)\n",text);
-	if extending :
-		extending = extending[0]
-	else:
-		extending = "Godot.Object"
-	tool = len(regex.findall(r"^tool.*$",text,flags)) > 0
-
-
-	for pair in function_replacements:
-		pair[0] = fr"(?<={separator})(?<![.])" + pair[0] + fr"(?=\()";
-		text = regex.sub(pair[0], pair[1], text,0,flags)
+		extending = regex.findall(r"extends (.*)\n",text);
+		if extending :
+			extending = extending[0]
+		else:
+			extending = "Godot.Object"
+		tool = len(regex.findall(r"^tool.*$",text,flags)) > 0
 
 
-	for pair in replacements:
-		text = _try_replace(text,pair)
+		for pair in function_replacements:
+			pair[0] = fr"(?<={separator})(?<![.])" + pair[0] + fr"(?=\()";
+			text = regex.sub(pair[0], pair[1], text,0,flags)
 
-	
 
-	
-	
+		for pair in replacements:
+			text = _try_replace(text,pair)
 
-	text = regex.sub("^","\t",text,0,flags); # Offset all the code by 1 tab, ready to be surrounded by class{...}
+		
 
-	print(outname)
-	class_name = regex.findall(fr"([^/]*)(?=\.cs)",outname,flags)[0];
-	print(class_name)
-	text = f"{header}\n{'[Tool]' if tool else ''}\npublic class {class_name} : {extending}\n{{\n" + text + "\n}";
-	with open(outname,'w') as wf:
-		wf.write(text);
-		print("SUCCESS -- " + outname)
+		
+		
+
+		text = regex.sub("^","\t",text,0,flags); # Offset all the code by 1 tab, ready to be surrounded by class{...}
+
+		print(outname)
+		class_name = regex.findall(fr"([^/]*)(?=\.cs)",outname,flags)[0];
+		print(class_name)
+		text = f"{header}\n{'[Tool]' if tool else ''}\npublic class {class_name} : {extending}\n{{\n" + text + "\n}";
+		with open(outname,'w') as wf:
+			wf.write(text);
+			print("SUCCESS -- " + outname)
+
+files = []
+
+if not os.path.isdir(filename):
+	if not outname.endswith(".cs"):
+		outname = outname + ".cs"
+
+	files = [[filename,outname]]
+
+else:
+	files = [[os.path.join(dp, f),regex.sub(fr"\.gd$",fr".cs", os.path.join(dp, f),0,flags)] for dp, dn, filenames in os.walk(filename) for f in filenames if os.path.splitext(f)[1] == '.gd'] # Find all gd files recursively, and rename them to *.cs.
+
+for [file_in,file_out] in files :
+	process_file(file_in,file_out)
+
+
 
 # 	test_text = """
 # a.(121+2).GetType(i)
