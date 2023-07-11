@@ -3,25 +3,32 @@ Regex based Python script that converts arbitrary gdscript code to C#<br>
 Wrapped in a graphical UI plugin for use in the Godot Editor.<br>
 It's far from perfect, but it it should let you skip most of the gruntwork when converting. <br> 
 It analyzes syntax only. No fancy code analysis.
-<br /> 
-<br /> 
-<b>Make sure to back-up all your files. No warranty of any kind is given. The author of this script cannot be held liable for any damage it may cause. <br><br>Use at your own risk.</b> <br><br>
-Known issues :<br>
-\- Keywords in strings or comments may be replaced<br>
-\- Ternary operators such as A?B:C are too expensive to parse correctly and are therefore ignored in some transformations.<br>
-<br>
-Usage : <br>
-In Godot:<br>
+
+__Make sure to back-up all your files. No warranty of any kind is given. The author of this script cannot be held liable for any damage it may cause.__
+
+__Use at your own risk.__
+
+## Godot compatibility of UI plugin
+- Originally developed for Godot _v3.2_ ([see this version in Asset library](https://godotengine.org/asset-library/asset/849))
+- Current version tested rudimentary with Godot _v4.1.stable.mono.official [970459615]_.
+
+## Known issues
+- Keywords in strings or comments may be replaced<br>
+- Ternary operators such as A?B:C are too expensive to parse correctly and are therefore ignored in some transformations.
+
+## Usage
+
+### In Godot:
 Just drop the addon directly into your godot projects addon folder, then activate it in your Project Settings.<br>
 Then navigate to Project->Tools->gd2cs .<br>
-Hover over buttons or input controls to find out what they do. <br>
-<br>
-From Python:<br>
+Hover over buttons or input controls to find out what they do.
+
+### From Python:
 Specify the input gd file via -f "\*" and the target output file via -o "\*" . <br>
 Use -t * to specify the number of spaces in a tab (default = 4). This will replace consecutive spaces with tabs so the regex patterns can match a mix of space-offsets and tab-offsets (eg "else:\n&nbsp;&nbsp;&nbsp;&nbsp;pass" will become "else:\n\tpass").<br>
 <br>
 Example :<br>
-python3 gd2cs.py/gd2cs.py -i "Test_Script_Godot.gd" -o "Output/TestScript.cs"<br>
+`python3 gd2cs.py/gd2cs.py -i "Test_Script_Godot.gd" -o "Output/TestScript.cs"`<br>
 <br>
 Example Code Conversion (apr. real life example. Intentionally formatted badly to show where the converter will fail) :<br>
 ```GDScript
@@ -216,11 +223,9 @@ public class GameDataTest2 : Node
 
 As you can see, it's not perfect and it will require you to manually fix the formatting and some underivable type definitions afterwards. But it should save you hundreds of hours on your code conversions. If it does save you time, please consider leaving a donation. It'll flow right back into making this project even better.
 
-<br>
 
-What's next :<br>
+## What's next
 
 \- process entire folders (recursively)<br>
-<br>
 
-But before that the focus will be on polishing existing features, increasing performance and publishing it on the Godot Asset Store.<br>
+But before that the focus will be on polishing existing features, increasing performance and publishing it on the Godot Asset Store.
