@@ -34,6 +34,7 @@ size_flags_vertical = 3
 
 [node name="SelectInput" type="Button" parent="VBoxContainer/TopBottomSplit/LeftRightSplit/Panel_L"]
 layout_mode = 2
+tooltip_text = "Select one or more gd script files to convert to c#. The output path will automatically be derived from your regex terms (right hand panel)."
 text = "Select Input"
 
 [node name="Files" type="ScrollContainer" parent="VBoxContainer/TopBottomSplit/LeftRightSplit/Panel_L"]
@@ -62,6 +63,7 @@ text = "Python Executable"
 [node name="PythonExecutable" type="LineEdit" parent="VBoxContainer/TopBottomSplit/LeftRightSplit/Panel_R/PyEx"]
 layout_mode = 2
 size_flags_horizontal = 3
+tooltip_text = "Path variable or direct path to the python executable. On most systems this is either py, python, python3 or python2. If any of those worked, this field should be prefilled automatically."
 text = "py"
 
 [node name="RenameOptions" type="HBoxContainer" parent="VBoxContainer/TopBottomSplit/LeftRightSplit/Panel_R"]
@@ -70,15 +72,21 @@ layout_mode = 2
 [node name="RenameVariables" type="CheckButton" parent="VBoxContainer/TopBottomSplit/LeftRightSplit/Panel_R/RenameOptions"]
 layout_mode = 2
 size_flags_horizontal = 3
+tooltip_text = "WIP
+If ON, automatically rename all variables to PascalCase or camelCase, away from _ separation."
 text = "Rename Variables"
 
 [node name="RenameFunctions" type="CheckButton" parent="VBoxContainer/TopBottomSplit/LeftRightSplit/Panel_R/RenameOptions"]
 layout_mode = 2
 size_flags_horizontal = 3
+tooltip_text = "If ON, automatically rename all methods and function calls to PascalCase. This includes methods bound to unknown types, which may be gd, which may be in error."
+button_pressed = true
 text = "Rename Functions"
 
 [node name="AddRR" type="Button" parent="VBoxContainer/TopBottomSplit/LeftRightSplit/Panel_R"]
 layout_mode = 2
+tooltip_text = "Add a new Regex Rename operation.
+These get executed sequentially on the file output name. The output file name will also determine the c# class name."
 text = "Add Rename Rule (Regex sub)"
 
 [node name="NameRepl" type="ScrollContainer" parent="VBoxContainer/TopBottomSplit/LeftRightSplit/Panel_R"]
@@ -100,11 +108,13 @@ layout_mode = 2
 [node name="ApplyRename" type="Button" parent="VBoxContainer/TopBottomSplit/LeftRightSplit/Panel_R/HBoxContainer"]
 layout_mode = 2
 size_flags_horizontal = 3
+tooltip_text = "Apply the full renaming stack to ALL output file paths. This will not automatically reset them to their input file paths, since with a proper matcher nothing should match twice."
 text = "Apply Path Renames"
 
 [node name="ResetNames" type="Button" parent="VBoxContainer/TopBottomSplit/LeftRightSplit/Panel_R/HBoxContainer"]
 layout_mode = 2
 size_flags_horizontal = 3
+tooltip_text = "Reset all output paths to their input value."
 text = "Reset Outputs"
 
 [node name="Console" type="Panel" parent="VBoxContainer/TopBottomSplit"]
@@ -134,12 +144,13 @@ offset_bottom = -49.0
 [node name="ConvertButton" type="Button" parent="HBoxContainer"]
 layout_mode = 2
 size_flags_horizontal = 3
+tooltip_text = "Start the conversion. This may take  a while, especially if you have individually large code files."
 text = "Convert"
 
 [node name="EditorFileDialog" type="EditorFileDialog" parent="."]
 mode = 1
-title = "Datei(en) öffnen"
-ok_button_text = "Öffnen"
+title = "Open File(s)"
+ok_button_text = "Open"
 display_mode = 1
 file_mode = 1
 show_hidden_files = true
