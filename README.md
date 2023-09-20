@@ -1,6 +1,6 @@
 # gd2cs.py
 Regex based Python script that converts arbitrary gdscript code to C#<br>
-Wrapped in a graphical UI plugin for use in the Godot Editor.<br>
+Wrapped in a graphical UI plugin for use in the Godot Editor. This branch is for the 3.x version of Godot, there is another branch for 4.x.<br>
 It's far from perfect, but it it should let you skip most of the gruntwork when converting. <br> 
 It analyzes syntax only. No fancy code analysis.
 <br /> 
@@ -214,13 +214,4 @@ public class GameDataTest2 : Node
 }
 ```
 
-As you can see, it's not perfect and it will require you to manually fix the formatting and some underivable type definitions afterwards. But it should save you hundreds of hours on your code conversions. If it does save you time, please consider leaving a donation. It'll flow right back into making this project even better.
-
-<br>
-
-What's next :<br>
-
-\- process entire folders (recursively)<br>
-<br>
-
-But before that the focus will be on polishing existing features, increasing performance and publishing it on the Godot Asset Store.<br>
+As you can see, it's not perfect and it will require you to manually fix the formatting and some underivable type definitions afterwards. But it should save you hundreds of hours on your code conversions.
