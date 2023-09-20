@@ -215,3 +215,4 @@ public class GameDataTest2 : Node
 ```
 
 As you can see, it's not perfect and it will require you to manually fix the formatting and some underivable type definitions afterwards. But it should save you hundreds of hours on your code conversions.
+Pull requests are welcome and will be merged. I don't personally work with Godot anymore, so feature requests will only be implemented against remuneration.
