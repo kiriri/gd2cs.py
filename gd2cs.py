@@ -296,7 +296,7 @@ replacements = [
 		# Replace spaces at beginning of line with tabs where applicable (Required for offset/scope matching)
 		[fr"(?<=^\t*)" + fr" "*strip_tabs,fr"\t"],
 		# Clean up directives that are manually applied after regex replacements
-		[fr"^\s*tool\s*$"," "], 
+		[fr"^\s*@?tool\s*$"," "], 
 		[fr"^\s*extends\s*.*\s*$"," "],
 		[fr"^\s*class_name\s*.*\s*$"," "], # Class Name is ignored entirely. C# Classes must be named like the file they are in.
 		[fr"\$\s*(?P<A>{valid_string_term})",fr"GetNode(\g<A>)"],
@@ -468,9 +468,9 @@ replacements = [
 		# Unidentifiable variables const var
 		[fr"(?<={separator}const\s+)(?={valid_name}\s*:?\s*(=|setget))",r"var "], 
 		# Auto identify variables from export hints
-		[fr"(?<={separator})export\s*\(\s*(?P<T>{valid_term})\s*(,\s*(?P<A>.*?)?)\s*\)\s*(?P<B>(const\s+)?)(var|const|{full_name})(?=\s+{valid_name}\s*(=|setget|;))",fr"[Export(\g<A>)] \g<B> \g<T>"], # Has parameters => Can derive type
-		[fr"(?<={separator})export\s*\(\s*(?P<T>{valid_term})\s*\)\s*(?P<B>(const\s+)?)(var|const|{full_name})(?=\s+{valid_name}\s*(=|setget|;))",fr"[Export] \g<B> \g<T>"], # Has parameters => Can derive type
-		[fr"(?<={separator})export\s*(?P<B>(const\s+)?)(?=(var|const|{full_name})\s+{valid_name}\s*(=|setget|;))",fr"[Export] \g<B>"], # No parameters
+		[fr"(?<={separator})@?export\s*\(\s*(?P<T>{valid_term})\s*(,\s*(?P<A>.*?)?)\s*\)\s*(?P<B>(const\s+)?)(var|const|{full_name})(?=\s+{valid_name}\s*(=|setget|;))",fr"[Export(\g<A>)] \g<B> \g<T>"], # Has parameters => Can derive type
+		[fr"(?<={separator})@?export\s*\(\s*(?P<T>{valid_term})\s*\)\s*(?P<B>(const\s+)?)(var|const|{full_name})(?=\s+{valid_name}\s*(=|setget|;))",fr"[Export] \g<B> \g<T>"], # Has parameters => Can derive type
+		[fr"(?<={separator})@?export\s*(?P<B>(const\s+)?)(?=(var|const|{full_name})\s+{valid_name}\s*(=|setget|;))",fr"[Export] \g<B>"], # No parameters
 		# Auto identify bools. TODO : Also accept simple static terms such as 5*5, !true, "a" in ["a","b","c"]
 		[fr"(?<={separator})var(?=\s+{valid_name}\s*:?\s*=\s*{valid_bool}(.*))",r"bool"],
 		# Auto identify float
@@ -942,7 +942,7 @@ def process_file(filename,outname):
 			extending = extending[0]
 		else:
 			extending = "Godot.Object"
-		tool = len(regex.findall(r"^tool.*$",text,flags)) > 0
+		tool = len(regex.findall(r"^@?tool.*$",text,flags)) > 0
 
 
 		for pair in function_replacements:
